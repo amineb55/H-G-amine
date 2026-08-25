@@ -21,8 +21,12 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8000
 
-    # Directory where uploaded media is stored (upload logic comes later).
-    media_dir: str = "media"
+    # Uploaded media is stored here until its analysis completes.
+    upload_dir: str = "data/uploads"
+
+    # Upload limits.
+    max_upload_bytes: int = 200 * 1024 * 1024
+    max_images: int = 10
 
     # Credentials for the analysis engine provider, injected at deploy time.
     analysis_engine_api_key: str = ""

@@ -21,6 +21,21 @@ class Status(str, Enum):
     A_VERIFIER = "a_verifier"
 
 
+class Referentiel(str, Enum):
+    """Referentials that can be applied to an inspection."""
+
+    BUREAUX = "bureaux"
+    BTP = "btp"
+
+
+class InspectionStatus(str, Enum):
+    """Lifecycle of an inspection request."""
+
+    PROCESSING = "processing"
+    DONE = "done"
+    FAILED = "failed"
+
+
 class Finding(BaseModel):
     """A single non-conformity observed during an inspection."""
 
@@ -43,3 +58,20 @@ class InspectionResult(BaseModel):
     scene_valid: bool = Field(..., description="Whether the scene is exploitable.")
     scene_detected: str = Field(..., description="Type of scene detected in the media.")
     findings: list[Finding] = Field(default_factory=list, description="Findings raised by the analysis.")
+
+
+class InspectionAccepted(BaseModel):
+    """Acknowledgement returned when an inspection is queued."""
+
+    inspection_id: str = Field(..., description="Identifier of the inspection.")
+    status: InspectionStatus = Field(..., description="Lifecycle status of the inspection.")
+
+
+class InspectionState(BaseModel):
+    """Current state of an inspection."""
+
+    status: InspectionStatus = Field(..., description="Lifecycle status of the inspection.")
+    result: InspectionResult | None = Field(
+        None, description="Analysis result, once the inspection is done."
+    )
+    error: str | None = Field(None, description="Failure reason, when the analysis failed.")

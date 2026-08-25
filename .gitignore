@@ -25,6 +25,7 @@ htmlcov/
 
 # Media / uploads
 media/
+data/
 
 # Editors & OS
 .idea/
