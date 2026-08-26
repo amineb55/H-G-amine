@@ -8,6 +8,7 @@ danger is never buried inside a digest.
 This module holds no provider-specific code; it calls the notifier interface.
 """
 
+import asyncio
 import logging
 from base64 import b64encode
 from datetime import date
@@ -24,7 +25,7 @@ from app.models.schemas import (
     Severity,
     ValidationStatus,
 )
-from app.services import evidence, report
+from app.services import report, storage
 from app.services.notifiers.email_notifier import NotificationError
 from app.services.notifiers.email_notifier import send as send_email
 
@@ -96,10 +97,10 @@ def _inline_image(inspection_id: str, finding: EnrichedFinding) -> str:
     if not finding.evidence_image:
         return ""
     try:
-        path = evidence.evidence_path(inspection_id, finding.evidence_image)
-        if not path.is_file() or path.stat().st_size > MAX_INLINE_IMAGE_BYTES:
+        data = storage.get_evidence(inspection_id, finding.evidence_image)
+        if not data or len(data) > MAX_INLINE_IMAGE_BYTES:
             return ""
-        encoded = b64encode(path.read_bytes()).decode("ascii")
+        encoded = b64encode(data).decode("ascii")
     except Exception:  # noqa: BLE001 - a missing image must not stop the email
         logger.warning("Could not inline evidence %s", finding.evidence_image, exc_info=True)
         return ""
@@ -263,7 +264,9 @@ async def dispatch(
     already succeeded.
     """
     groups = group_by_recipient(result)
-    attachments = _build_report(result) if groups else []
+    # Building the report and each body reads evidence from storage and runs
+    # reportlab: both are kept off the event loop.
+    attachments = await asyncio.to_thread(_build_report, result) if groups else []
     # Immediate-stop alerts first, then digests; stable order within each.
     ordered = sorted(groups.items(), key=lambda item: (item[0][1] is not EmailKind.IMMEDIATE, item[0][0]))
 
@@ -275,7 +278,7 @@ async def dispatch(
             None,
         )
         subject = build_subject(result, kind, len(findings))
-        html = build_html(result, kind, findings, recipient_name)
+        html = await asyncio.to_thread(build_html, result, kind, findings, recipient_name)
 
         try:
             message_id = await send_email(

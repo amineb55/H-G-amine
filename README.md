@@ -263,13 +263,113 @@ WARNING:  app.main - Inspection store: IN MEMORY. Inspections are lost when
                      this process stops.
 ```
 
-### Evidence files are not persistent yet
+### Evidence storage
 
-Evidence images still live on the local disk under `EVIDENCE_DIR`. On a
-platform with ephemeral instances, **an inspection's record will survive a
-redeploy but its evidence images will not**: the review screen and the PDF
-will show findings whose images 404. Moving evidence to object storage is the
-next deployment step.
+Evidence images go to object storage, selected by `STORAGE_BACKEND`:
+
+- `gcs` (default) — objects at `evidence/{inspection_id}/{filename}` in the
+  bucket named by `EVIDENCE_BUCKET`. Survives an instance being replaced.
+- `local` — a directory under `EVIDENCE_DIR`, for development without cloud
+  credentials.
+
+Callers never learn which backend is in use: the evidence endpoint, the PDF
+generator and the email builder all read through `app/services/storage.py`,
+none of them assumes a filesystem path. Inspection ids and file names are
+validated against a strict pattern before they reach either backend, so
+nothing can be read outside an inspection's own space.
+
+Uploaded media is the exception and stays on local disk: the analysis and the
+frame extraction need real files, and it is deleted as soon as the job ends.
+On Cloud Run that disk is in-memory and counts against the instance's memory,
+so a 200 MB upload is 200 MB of the 1 GiB allowance.
+
+## Deployment
+
+The service runs on Cloud Run from the `Dockerfile`: `python:3.11-slim`,
+multi-stage, a single uvicorn worker, listening on the `PORT` the platform
+provides (8080 when run without one) as a non-root user. `ffmpeg` comes from
+the `imageio-ffmpeg` wheel as a statically linked binary — verified with
+`ldd`, it has no dynamic dependencies — so the slim image needs no apt
+package and downloads nothing at run time.
+
+Deploy with `./deploy.sh` (bash) or `.\deploy.ps1` (PowerShell). Both run the
+same `gcloud run deploy` against `europe-west1` with 1 GiB and a 300 s
+timeout, and both take the project from `PROJECT_ID` or your gcloud default.
+
+### Secrets
+
+Secrets are injected as environment variables from Secret Manager; the
+application never calls Secret Manager itself and no key file exists in this
+repository.
+
+| Secret | Environment variable |
+| --- | --- |
+| `analysis-engine-api-key` | `ANALYSIS_ENGINE_API_KEY` |
+| `notifier-api-key` | `NOTIFIER_API_KEY` |
+| `notifier-sender-email` | `NOTIFIER_SENDER_EMAIL` |
+
+A missing secret does not stop the service from starting; it is reported at
+startup **by name only**, and the feature that needs it fails with a readable
+message:
+
+```
+ERROR: Missing configuration: NOTIFIER_API_KEY. The application is running,
+       but the features that need them will fail until they are provided.
+```
+
+### IAM
+
+Grant the Cloud Run service account three roles. By default that account is
+`PROJECT_NUMBER-compute@developer.gserviceaccount.com`; find it with:
+
+```bash
+PROJECT_ID=$(gcloud config get-value project)
+PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
+SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+```
+
+| Role | Why |
+| --- | --- |
+| `roles/datastore.user` | read and write the inspection documents |
+| `roles/storage.objectAdmin` | write, read and delete evidence objects |
+| `roles/secretmanager.secretAccessor` | read the three secrets at start-up |
+
+```bash
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${SA}" --role="roles/datastore.user"
+
+gcloud storage buckets add-iam-policy-binding gs://hse-audit-agent-evidence \
+  --member="serviceAccount:${SA}" --role="roles/storage.objectAdmin"
+
+gcloud secrets add-iam-policy-binding analysis-engine-api-key \
+  --member="serviceAccount:${SA}" --role="roles/secretmanager.secretAccessor"
+gcloud secrets add-iam-policy-binding notifier-api-key \
+  --member="serviceAccount:${SA}" --role="roles/secretmanager.secretAccessor"
+gcloud secrets add-iam-policy-binding notifier-sender-email \
+  --member="serviceAccount:${SA}" --role="roles/secretmanager.secretAccessor"
+```
+
+`roles/storage.objectAdmin` is granted on the bucket rather than the whole
+project, so the service can only touch its own evidence.
+
+### Health and startup
+
+`GET /health` touches nothing downstream and answers `200` even when the
+store and the bucket are both unreachable — the platform must never restart a
+healthy container because of a downstream outage. Requests that do need a
+backend return `503` with the reason:
+
+```json
+{"detail": "The inspection store did not answer in time; could not read this inspection."}
+```
+
+Startup logs which backends are active, and never logs a secret value:
+
+```
+INFO:  Configuration: all required secrets are present.
+INFO:  Inspection store: persistent, collection 'inspections'.
+INFO:  Evidence storage: object storage, bucket 'hse-audit-agent-evidence'.
+```
 
 ## Processing model
 
@@ -363,6 +463,9 @@ Settings are read from the environment and from `.env` (see `.env.example`).
 | `STORE_TIMEOUT_SECONDS` | `15` | Deadline on each store call. |
 | `STORE_PROBE_SECONDS` | `5` | Deadline on the startup probe. |
 | `LOG_LEVEL` | `INFO` | Application log level. |
+| `STORAGE_BACKEND` | `gcs` | `gcs` for object storage, `local` for a directory. |
+| `EVIDENCE_BUCKET` | *(empty)* | Bucket holding the evidence. Required in `gcs` mode. |
+| `PORT` | `8080` | Port the container listens on. Supplied by the platform. |
 | `ANALYSIS_ENGINE_API_KEY` | *(empty)* | Provider credentials. Required to analyze. |
 | `ANALYSIS_ENGINE_MODEL` | *(empty)* | Model identifier. Empty uses the provider default. |
 | `ANALYSIS_ENGINE_TIMEOUT_SECONDS` | `120` | Per-request timeout. |

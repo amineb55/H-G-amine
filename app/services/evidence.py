@@ -5,18 +5,19 @@ or a single still extracted at its timestamp for a video. The originals are
 deleted by the job once this has run.
 """
 
-import json
 import logging
 import re
-import shutil
 import subprocess
+import tempfile
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 
 import imageio_ffmpeg
 from PIL import ExifTags, Image
 
 from app.config import get_settings
+from app.services import storage
 
 logger = logging.getLogger(__name__)
 
@@ -37,33 +38,9 @@ class EvidenceError(Exception):
     """Raised when evidence cannot be produced."""
 
 
-def evidence_dir(inspection_id: str) -> Path:
-    """Directory holding an inspection's evidence, created on demand."""
-    root = Path(get_settings().evidence_dir).resolve()
-    target = (root / inspection_id).resolve()
-    if root not in target.parents:
-        raise EvidenceError("Invalid inspection identifier.")
-    target.mkdir(parents=True, exist_ok=True)
-    return target
-
-
-def evidence_path(inspection_id: str, filename: str) -> Path:
-    """Resolve one evidence file, refusing anything outside its directory."""
-    if not _SAFE_NAME.match(filename):
-        raise EvidenceError("Invalid evidence file name.")
-    directory = evidence_dir(inspection_id)
-    target = (directory / filename).resolve()
-    if target.parent != directory:
-        raise EvidenceError("Invalid evidence file name.")
-    return target
-
-
 def delete_evidence(inspection_id: str) -> None:
-    """Remove every evidence file of an inspection."""
-    root = Path(get_settings().evidence_dir).resolve()
-    target = (root / inspection_id).resolve()
-    if root in target.parents and target.is_dir():
-        shutil.rmtree(target, ignore_errors=True)
+    """Remove every evidence image of an inspection."""
+    storage.delete_evidence(inspection_id)
 
 
 def _image_taken_at(path: Path) -> datetime | None:
@@ -134,13 +111,15 @@ def read_capture_time(media_dir: str) -> datetime | None:
     return min(found) if found else None
 
 
-def _store_image(source: Path, destination: Path) -> None:
-    """Copy an image into the evidence directory, downscaled to a sane size."""
+def _encode_image(source: Path) -> bytes:
+    """Read an image, downscaled to a sane size, as JPEG bytes."""
     limit = get_settings().evidence_max_pixels
+    buffer = BytesIO()
     with Image.open(source) as image:
         image = image.convert("RGB")
         image.thumbnail((limit, limit))
-        image.save(destination, format="JPEG", quality=85)
+        image.save(buffer, format="JPEG", quality=85)
+    return buffer.getvalue()
 
 
 def _extract_frame(video: Path, second: int, destination: Path) -> bool:
@@ -170,37 +149,48 @@ def build(inspection_id: str, media_dir: str, findings: list) -> None:
 
     images = sorted(p for p in directory.iterdir() if p.suffix.lower() in IMAGE_SUFFIXES)
     videos = sorted(p for p in directory.iterdir() if p.suffix.lower() in VIDEO_SUFFIXES)
-    target = evidence_dir(inspection_id)
 
-    if videos:
-        video = videos[0]
-        # One still per distinct timestamp: two findings at the same second
-        # share a frame rather than duplicating it.
-        for second in sorted({max(int(f.timestamp_sec), 0) for f in findings}):
-            name = f"frame-{second:05d}s.jpg"
-            if _extract_frame(video, second, target / name):
+    # Frames are cut into a scratch directory, then handed to storage: the
+    # backend decides where they actually live.
+    with tempfile.TemporaryDirectory() as scratch:
+        workspace = Path(scratch)
+
+        if videos:
+            video = videos[0]
+            # One still per distinct timestamp: two findings at the same second
+            # share a frame rather than duplicating it.
+            for second in sorted({max(int(f.timestamp_sec), 0) for f in findings}):
+                name = f"frame-{second:05d}s.jpg"
+                cut = workspace / name
+                if not _extract_frame(video, second, cut):
+                    continue
+                try:
+                    storage.put_evidence(inspection_id, name, cut.read_bytes())
+                except Exception:  # noqa: BLE001 - one lost frame is not a failure
+                    logger.warning("Could not store evidence frame %s", name, exc_info=True)
+                    continue
                 for finding in findings:
                     if max(int(finding.timestamp_sec), 0) == second:
                         finding.evidence_image = name
-        return
+            return
 
-    if not images:
-        return
+        if not images:
+            return
 
-    # For images the model reports which one it observed, as an index into the
-    # batch; anything out of range falls back to the first image.
-    kept: dict[int, str] = {}
-    for finding in findings:
-        position = int(finding.timestamp_sec)
-        if not 0 <= position < len(images):
-            position = 0
-        if position not in kept:
-            name = f"image-{position:02d}.jpg"
-            try:
-                _store_image(images[position], target / name)
-            except Exception:  # noqa: BLE001 - one bad image is not a failure
-                logger.warning("Could not store evidence from %s", images[position].name,
-                               exc_info=True)
-                continue
-            kept[position] = name
-        finding.evidence_image = kept[position]
+        # For images the model reports which one it observed, as an index into
+        # the batch; anything out of range falls back to the first image.
+        kept: dict[int, str] = {}
+        for finding in findings:
+            position = int(finding.timestamp_sec)
+            if not 0 <= position < len(images):
+                position = 0
+            if position not in kept:
+                name = f"image-{position:02d}.jpg"
+                try:
+                    storage.put_evidence(inspection_id, name, _encode_image(images[position]))
+                except Exception:  # noqa: BLE001 - one bad image is not a failure
+                    logger.warning("Could not store evidence from %s",
+                                   images[position].name, exc_info=True)
+                    continue
+                kept[position] = name
+            finding.evidence_image = kept[position]

@@ -1,0 +1,35 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local state and secrets
+data/
+.env
+.env.*
+!.env.example
+
+# Version control and CI
+.git/
+.github/
+.gitignore
+
+# Python artefacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+
+# Anything not needed at runtime
+deploy.sh
+deploy.ps1
+README.md

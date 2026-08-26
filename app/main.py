@@ -1,12 +1,22 @@
 """FastAPI application for the HSE inspection analysis service."""
 
+import asyncio
 import logging
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse, Response
+from fastapi import (
+    BackgroundTasks,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from app.config import get_settings
 from app.models.schemas import (
@@ -51,11 +61,22 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    """Report the state of the inspection store without blocking startup.
+    """Report which backends are active, without blocking startup.
 
-    An unreachable store is a loud log line, not a crash: the application
-    still comes up and every request that needs the store says why it failed.
+    Nothing here can stop the application coming up: an unreachable backend is
+    a loud log line, and every request that needs it says why it failed.
+    Secret values are never logged — only the names of the ones missing.
     """
+    missing = settings.missing_secrets()
+    if missing:
+        logger.error(
+            "Missing configuration: %s. The application is running, but the "
+            "features that need them will fail until they are provided.",
+            ", ".join(missing),
+        )
+    else:
+        logger.info("Configuration: all required secrets are present.")
+
     if inspection_store.backend() == inspection_store.MEMORY_BACKEND:
         logger.warning(
             "Inspection store: IN MEMORY. Inspections are lost when this process "
@@ -74,6 +95,26 @@ async def lifespan(_: FastAPI):
                 "but every inspection request will fail until this is fixed.",
                 reason,
             )
+
+    if storage.storage_backend() == storage.LOCAL_BACKEND:
+        logger.warning(
+            "Evidence storage: LOCAL DISK at '%s'. Evidence is lost when this "
+            "instance is replaced. Set STORAGE_BACKEND=gcs to persist it.",
+            settings.evidence_dir,
+        )
+    else:
+        reason = await asyncio.to_thread(storage.check_evidence_storage)
+        if reason is None:
+            logger.info(
+                "Evidence storage: object storage, bucket '%s'.",
+                settings.evidence_bucket,
+            )
+        else:
+            logger.error(
+                "Evidence storage UNREACHABLE: %s. The application is running, "
+                "but evidence images will not be stored or served.",
+                reason,
+            )
     yield
 
 
@@ -85,9 +126,29 @@ app = FastAPI(
 )
 
 
+@app.exception_handler(inspection_store.StoreError)
+async def _store_unavailable(_: Request, exc: inspection_store.StoreError) -> JSONResponse:
+    """A store failure is the backend's fault, and the caller is told why."""
+    logger.warning("Inspection store failure: %s", exc)
+    return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        content={"detail": str(exc)})
+
+
+@app.exception_handler(storage.StorageError)
+async def _storage_unavailable(_: Request, exc: storage.StorageError) -> JSONResponse:
+    """Same for evidence storage."""
+    logger.warning("Evidence storage failure: %s", exc)
+    return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        content={"detail": str(exc)})
+
+
 @app.get("/health")
 async def health() -> dict:
-    """Liveness probe."""
+    """Liveness probe.
+
+    Deliberately touches nothing downstream: the platform must not restart a
+    healthy container because a database or a bucket is briefly unavailable.
+    """
     return {"status": "ok"}
 
 
@@ -331,23 +392,27 @@ async def review_page(inspection_id: str) -> FileResponse:
 
 
 @app.get("/inspections/{inspection_id}/evidence/{filename}", include_in_schema=False)
-async def read_evidence(inspection_id: str, filename: str) -> FileResponse:
+async def read_evidence(inspection_id: str, filename: str) -> Response:
     """Serve one retained evidence image."""
     if await inspection_store.get(inspection_id) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Unknown inspection."
         )
     try:
-        path = evidence.evidence_path(inspection_id, filename)
-    except evidence.EvidenceError as exc:
+        data = await asyncio.to_thread(storage.get_evidence, inspection_id, filename)
+    except storage.StorageError as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid evidence file name."
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
         ) from exc
-    if not path.is_file():
+    if data is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="No such evidence image."
         )
-    return FileResponse(path, media_type="image/jpeg")
+    return Response(
+        content=data,
+        media_type="image/jpeg",
+        headers={"cache-control": "private, max-age=3600"},
+    )
 
 
 @app.patch("/inspections/{inspection_id}/findings/{index}", response_model=ReviewResponse)
@@ -431,7 +496,7 @@ async def read_report(inspection_id: str) -> Response:
             status_code=status.HTTP_409_CONFLICT,
             detail="This inspection has no result to report on yet.",
         )
-    pdf = report.build_pdf(result)
+    pdf = await asyncio.to_thread(report.build_pdf, result)
     return Response(
         content=pdf,
         media_type="application/pdf",

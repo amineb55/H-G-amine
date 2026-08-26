@@ -1,18 +1,26 @@
-"""Storage abstraction for uploaded inspection media.
+"""Storage for inspection media and for the evidence kept from it.
 
-Local filesystem implementation. Media for an inspection lives under a
-directory named after its ``inspection_id``, so the whole set can be removed
-in one call once the analysis is over. A cloud backend can replace the module
-body later without changing callers.
+Uploaded media always lands on local disk: the analysis and the frame
+extraction need real files, and it is deleted as soon as the job ends.
+
+Evidence outlives the job, so it goes to object storage — selected by
+``STORAGE_BACKEND``, with a local directory for development. Callers never
+learn which backend is in use, nor where an object physically lives.
 """
 
+import logging
+import re
 import shutil
+import threading
 import uuid
 from pathlib import Path
+from typing import Any
 
 from fastapi import UploadFile
 
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 CHUNK_SIZE = 1024 * 1024
 
@@ -27,6 +35,10 @@ SUPPORTED_MEDIA_TYPES: dict[str, str] = {
 
 VIDEO_MEDIA_TYPES = frozenset({"video/mp4", "video/quicktime"})
 IMAGE_MEDIA_TYPES = frozenset({"image/jpeg", "image/png"})
+
+
+# Names allowed for an inspection id or an evidence file.
+_NAME_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
 
 
 class StorageError(Exception):
@@ -107,3 +119,162 @@ def delete_media(inspection_id: str) -> None:
     retained, never the original media.
     """
     delete(inspection_id)
+
+
+# --- evidence ---------------------------------------------------------------
+
+GCS_BACKEND = "gcs"
+LOCAL_BACKEND = "local"
+
+# Objects are laid out as evidence/{inspection_id}/{filename}.
+EVIDENCE_PREFIX = "evidence"
+
+_gcs_bucket: Any = None
+_gcs_lock = threading.Lock()
+
+
+def storage_backend() -> str:
+    """Which evidence backend is in use."""
+    return get_settings().storage_backend.strip().lower()
+
+
+def _check_name(inspection_id: str, filename: str) -> None:
+    """Refuse anything that could escape an inspection's own space."""
+    if not _NAME_PATTERN.match(inspection_id) or not _NAME_PATTERN.match(filename):
+        raise StorageError("Invalid evidence name.")
+
+
+def _object_name(inspection_id: str, filename: str) -> str:
+    _check_name(inspection_id, filename)
+    return f"{EVIDENCE_PREFIX}/{inspection_id}/{filename}"
+
+
+def _bucket() -> Any:
+    """Return the evidence bucket, built on first use.
+
+    Never called at import: unreachable object storage must not stop the
+    application from starting.
+    """
+    global _gcs_bucket
+    if _gcs_bucket is not None:
+        return _gcs_bucket
+    with _gcs_lock:
+        if _gcs_bucket is not None:
+            return _gcs_bucket
+        name = get_settings().evidence_bucket.strip()
+        if not name:
+            raise StorageError(
+                "Evidence storage is not configured: EVIDENCE_BUCKET is not set."
+            )
+        try:
+            from google.cloud import storage as gcs
+        except ImportError as exc:  # pragma: no cover - depends on the install
+            raise StorageError(
+                "The object storage client is not installed. Install the project "
+                "dependencies, or set STORAGE_BACKEND=local."
+            ) from exc
+        try:
+            # No key file: credentials come from the ambient environment.
+            _gcs_bucket = gcs.Client().bucket(name)
+        except Exception as exc:  # noqa: BLE001
+            raise StorageError(f"Could not reach evidence storage: {exc}") from exc
+        return _gcs_bucket
+
+
+def _as_storage_error(exc: Exception, action: str) -> StorageError:
+    """Translate a client failure into a message worth showing."""
+    name = exc.__class__.__name__
+    if name in ("Forbidden", "Unauthorized"):
+        return StorageError("Evidence storage rejected the credentials.")
+    if name == "NotFound":
+        return StorageError("The evidence bucket does not exist.")
+    return StorageError(f"Evidence storage could not {action}: {exc}")
+
+
+def _local_evidence_root() -> Path:
+    root = Path(get_settings().evidence_dir).resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def put_evidence(inspection_id: str, filename: str, data: bytes) -> None:
+    """Store one evidence image."""
+    if storage_backend() == LOCAL_BACKEND:
+        _check_name(inspection_id, filename)
+        directory = _local_evidence_root() / inspection_id
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / filename).write_bytes(data)
+        return
+    name = _object_name(inspection_id, filename)
+    try:
+        _bucket().blob(name).upload_from_string(data, content_type="image/jpeg")
+    except StorageError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise _as_storage_error(exc, "store this evidence image") from exc
+
+
+def get_evidence(inspection_id: str, filename: str) -> bytes | None:
+    """Return one evidence image, or None when it is not there."""
+    if storage_backend() == LOCAL_BACKEND:
+        _check_name(inspection_id, filename)
+        target = _local_evidence_root() / inspection_id / filename
+        return target.read_bytes() if target.is_file() else None
+    name = _object_name(inspection_id, filename)
+    try:
+        blob = _bucket().blob(name)
+        return blob.download_as_bytes() if blob.exists() else None
+    except StorageError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise _as_storage_error(exc, "read this evidence image") from exc
+
+
+def delete_evidence(inspection_id: str) -> None:
+    """Remove every evidence image of an inspection."""
+    if storage_backend() == LOCAL_BACKEND:
+        if not _NAME_PATTERN.match(inspection_id):
+            raise StorageError("Invalid evidence name.")
+        target = _local_evidence_root() / inspection_id
+        if target.is_dir():
+            shutil.rmtree(target, ignore_errors=True)
+        return
+    if not _NAME_PATTERN.match(inspection_id):
+        raise StorageError("Invalid evidence name.")
+    try:
+        bucket = _bucket()
+        for blob in bucket.list_blobs(prefix=f"{EVIDENCE_PREFIX}/{inspection_id}/"):
+            blob.delete()
+    except StorageError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise _as_storage_error(exc, "delete this evidence") from exc
+
+
+def list_evidence(inspection_id: str) -> list[str]:
+    """File names of an inspection's evidence, for tests and diagnostics."""
+    if storage_backend() == LOCAL_BACKEND:
+        target = _local_evidence_root() / inspection_id
+        return sorted(p.name for p in target.iterdir()) if target.is_dir() else []
+    prefix = f"{EVIDENCE_PREFIX}/{inspection_id}/"
+    try:
+        return sorted(
+            blob.name[len(prefix):] for blob in _bucket().list_blobs(prefix=prefix)
+        )
+    except StorageError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise _as_storage_error(exc, "list this evidence") from exc
+
+
+def check_evidence_storage() -> str | None:
+    """Probe evidence storage. None when healthy, else a readable reason."""
+    if storage_backend() == LOCAL_BACKEND:
+        return None
+    try:
+        _bucket().exists()
+    except StorageError as exc:
+        return str(exc)
+    except Exception as exc:  # noqa: BLE001
+        return str(_as_storage_error(exc, "be reached"))
+    return None

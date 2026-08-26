@@ -23,7 +23,7 @@ from reportlab.platypus import (
 )
 
 from app.models.schemas import EnrichedFinding, EnrichedInspectionResult, FindingSource, Severity
-from app.services import evidence
+from app.services import storage
 
 logger = logging.getLogger(__name__)
 
@@ -151,13 +151,13 @@ def _evidence_flowable(inspection_id: str, finding: EnrichedFinding) -> Image | 
     if not finding.evidence_image:
         return None
     try:
-        path = evidence.evidence_path(inspection_id, finding.evidence_image)
-        if not path.is_file():
+        data = storage.get_evidence(inspection_id, finding.evidence_image)
+        if not data:
             return None
-        reader = ImageReader(str(path))
+        reader = ImageReader(BytesIO(data))
         width, height = reader.getSize()
         target = 90 * mm
-        return Image(str(path), width=target, height=target * height / width)
+        return Image(BytesIO(data), width=target, height=target * height / width)
     except Exception:  # noqa: BLE001 - a missing image must not break the report
         logger.warning("Could not embed evidence %s", finding.evidence_image, exc_info=True)
         return None

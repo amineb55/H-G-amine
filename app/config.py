@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -36,7 +36,10 @@ class Settings(BaseSettings):
     # Empty falls back to the project the ambient credentials name.
     store_project_id: str = Field("", validation_alias="GOOGLE_CLOUD_PROJECT")
 
-    # Evidence frames kept after the analysis; the source media is deleted.
+    # Where evidence images live: "gcs" (default) or "local" for development.
+    storage_backend: str = "gcs"
+    evidence_bucket: str = Field("", validation_alias="EVIDENCE_BUCKET")
+    # Used by the local backend only.
     evidence_dir: str = "data/evidence"
     # Longest edge of a stored evidence image, in pixels.
     evidence_max_pixels: int = 1280
@@ -56,12 +59,30 @@ class Settings(BaseSettings):
 
     # Email notifications. The Python names stay provider-neutral; only the
     # environment variable names below are provider-specific.
-    notifier_api_key: str = Field("", validation_alias="BREVO_API_KEY")
-    notifier_sender_email: str = Field("", validation_alias="BREVO_SENDER_EMAIL")
+    notifier_api_key: str = Field(
+        "", validation_alias=AliasChoices("NOTIFIER_API_KEY", "BREVO_API_KEY")
+    )
+    notifier_sender_email: str = Field(
+        "", validation_alias=AliasChoices("NOTIFIER_SENDER_EMAIL", "BREVO_SENDER_EMAIL")
+    )
     notifier_sender_name: str = "Inspection HSE"
     notifier_timeout_seconds: int = 30
     # Leave empty to use the notifier's own endpoint.
     notifier_api_url: str = ""
+
+
+    def missing_secrets(self) -> list[str]:
+        """Names of the secrets that must be provided but are not set.
+
+        Only names are ever returned — a value is never read back out for
+        logging or display.
+        """
+        required = {
+            "ANALYSIS_ENGINE_API_KEY": self.analysis_engine_api_key,
+            "NOTIFIER_API_KEY": self.notifier_api_key,
+            "NOTIFIER_SENDER_EMAIL": self.notifier_sender_email,
+        }
+        return sorted(name for name, value in required.items() if not value.strip())
 
 
 @lru_cache
