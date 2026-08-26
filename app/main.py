@@ -45,6 +45,7 @@ from app.services import (
     storage,
 )
 from app.services.inspection_job import run_inspection
+from app.services.notifiers import email_notifier
 
 REVIEW_PAGE = Path(__file__).resolve().parent.parent / "templates" / "review.html"
 
@@ -529,3 +530,15 @@ async def read_options(referentiel: Referentiel) -> dict:
             {"key": key, "name": name} for key, name in assignment.known_roles().items()
         ],
     }
+
+
+@app.get("/debug/notifier", include_in_schema=False)
+async def debug_notifier() -> dict:
+    """Report what the email notifier can actually reach, step by step.
+
+    Temporary diagnostic tooling for investigating a failure that appears in
+    one environment and not another. The response carries no secret: only
+    whether one is configured, the host being contacted, and the outcome of
+    each step. Remove this endpoint once the problem is understood.
+    """
+    return await email_notifier.diagnose_connectivity()

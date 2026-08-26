@@ -185,6 +185,40 @@ on their own message.
 
 Everything the model wrote is HTML-escaped before it reaches an email body.
 
+### Diagnosing a delivery failure
+
+A transport failure is logged at `ERROR` before it is wrapped, with the
+category, the host, the recipient, the exception type and its root cause. The
+API key is never logged, nor is the payload that carries it:
+
+```
+ERROR Email transport failure [dns] host=api.example.com recipient=... :
+      ConnectError: [Errno -2] Name or service not known (root cause gaierror: ...)
+```
+
+The wrapped message names the cause rather than saying the service could not
+be reached: `dns`, `connection_refused`, `tls`, `tls_verification`, `proxy`,
+`network_unreachable`, `connection_reset`, `timeout`, or an HTTP status.
+
+`GET /debug/notifier` runs the same path step by step and reports where it
+stops — configuration presence, DNS resolution, TCP and TLS, then a read-only
+API call that sends no mail. It returns **no secret**: only whether a key and
+a sender are configured, the host being contacted, and each step's outcome.
+
+```json
+{
+  "endpoint_host": "api.example.com", "endpoint_scheme": "https",
+  "dns": {"ok": true, "addresses": ["..."]},
+  "tcp_tls": {"ok": true, "tls_version": "TLSv1.3", "certificate_issuer": "..."},
+  "api_call": {"ok": false, "status_code": 401, "message": "..."},
+  "outcome": "failed at api_call"
+}
+```
+
+This endpoint is **temporary diagnostic tooling**. It is unauthenticated like
+the rest of the service, so it does disclose the provider host and whether
+credentials are set — remove it once the problem is understood.
+
 ### Email provider
 
 `app/services/notifiers/email_notifier.py` is the only module aware of which
