@@ -5,6 +5,7 @@ prompt in ``app/prompts/inspection.txt``, so both can be edited without
 touching code. This module holds no provider-specific logic.
 """
 
+import logging
 from functools import lru_cache
 from pathlib import Path
 
@@ -12,6 +13,8 @@ import yaml
 from pydantic import BaseModel, Field, ValidationError
 
 from app.models.schemas import Referentiel, Severity
+
+logger = logging.getLogger(__name__)
 
 RULES_DIR = Path(__file__).resolve().parent.parent / "rules"
 PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "inspection.txt"
@@ -38,6 +41,7 @@ class RuleCatalog(BaseModel):
     """The set of rules applied to one referential."""
 
     referentiel: Referentiel = Field(..., description="Referential these rules belong to.")
+    label: str = Field(..., min_length=1, description="Human name shown to readers.")
     rules: list[Rule] = Field(..., min_length=1, description="Rules to audit against.")
 
 
@@ -81,6 +85,19 @@ def load_catalog(referentiel: str) -> RuleCatalog:
         seen.add(rule.id)
 
     return catalog
+
+
+def referentiel_label(referentiel: str) -> str:
+    """The human name of a referential, for anything a person reads.
+
+    Falls back to the raw key rather than failing: a report is still worth
+    producing when a catalog is missing its label.
+    """
+    try:
+        return load_catalog(referentiel).label
+    except PromptError:
+        logger.warning("No catalog for referential '%s'; showing the raw key", referentiel)
+        return referentiel
 
 
 def render_rules(catalog: RuleCatalog) -> str:

@@ -1,5 +1,6 @@
 # Catalogue de regles - inspection bureaux et administrations
 referentiel: bureaux
+label: Bureaux et administrations
 rules:
   - id: BUR-01
     title: Postes de travail amenages pour limiter les risques ergonomiques

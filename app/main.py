@@ -251,6 +251,12 @@ async def read_inspection(inspection_id: str) -> InspectionState:
     )
 
 
+def _label_for(record: dict, result: EnrichedInspectionResult | None) -> str | None:
+    """Human name of the inspection's referential, for display."""
+    referentiel = result.referentiel if result else record.get("referentiel")
+    return inspection_prompt.referentiel_label(referentiel) if referentiel else None
+
+
 async def _load_result(inspection_id: str) -> tuple[dict, EnrichedInspectionResult | None]:
     """Return an inspection record and its parsed result."""
     record = await inspection_store.get(inspection_id)
@@ -300,6 +306,7 @@ async def _set_validation(
     return ReviewResponse(
         inspection_id=inspection_id,
         status=record["status"],
+        referentiel_label=_label_for(record, result),
         result=result,
         summary=assignment.summarize(result),
         error=record.get("error"),
@@ -313,6 +320,7 @@ async def review_inspection(inspection_id: str) -> ReviewResponse:
     return ReviewResponse(
         inspection_id=inspection_id,
         status=record["status"],
+        referentiel_label=_label_for(record, result),
         result=result,
         summary=assignment.summarize(result),
         error=record.get("error"),
@@ -455,7 +463,8 @@ async def edit_finding(inspection_id: str, index: int, edit: FindingEdit) -> Rev
     await inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
 
     return ReviewResponse(
-        inspection_id=inspection_id, status=record["status"], result=result,
+        inspection_id=inspection_id, status=record["status"],
+        referentiel_label=_label_for(record, result), result=result,
         summary=assignment.summarize(result), error=record.get("error"),
     )
 
@@ -482,7 +491,8 @@ async def add_finding(inspection_id: str, manual: ManualFinding) -> ReviewRespon
     await inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
 
     return ReviewResponse(
-        inspection_id=inspection_id, status=record["status"], result=result,
+        inspection_id=inspection_id, status=record["status"],
+        referentiel_label=_label_for(record, result), result=result,
         summary=assignment.summarize(result), error=record.get("error"),
     )
 

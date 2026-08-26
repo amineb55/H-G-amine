@@ -184,6 +184,9 @@ class ReviewResponse(BaseModel):
 
     inspection_id: str = Field(..., description="Identifier of the inspection.")
     status: InspectionStatus = Field(..., description="Lifecycle status of the inspection.")
+    referentiel_label: str | None = Field(
+        None, description="Human name of the referential, for display."
+    )
     result: EnrichedInspectionResult | None = Field(
         None, description="Enriched result, once the inspection is done."
     )

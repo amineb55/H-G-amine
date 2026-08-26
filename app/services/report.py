@@ -2,6 +2,7 @@
 
 import logging
 from datetime import date, datetime
+from html import escape
 from io import BytesIO
 
 from reportlab.lib import colors
@@ -22,8 +23,14 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from app.models.schemas import EnrichedFinding, EnrichedInspectionResult, FindingSource, Severity
-from app.services import storage
+from app.models.schemas import (
+    EnrichedFinding,
+    EnrichedInspectionResult,
+    FindingSource,
+    Severity,
+    ValidationStatus,
+)
+from app.services import inspection_prompt, storage
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +81,20 @@ def _format_datetime(moment: datetime | None) -> str:
     return moment.strftime("%d/%m/%Y à %H:%M") if moment else "non renseignée"
 
 
+def retained_findings(result: EnrichedInspectionResult) -> list[EnrichedFinding]:
+    """The findings this report may assert.
+
+    Only what an auditor explicitly approved. A rejected finding, and one
+    still awaiting a decision, are never reported: the report must not assert
+    a validation that did not happen.
+    """
+    return [
+        finding
+        for finding in result.findings
+        if finding.validation_status is ValidationStatus.APPROVED
+    ]
+
+
 def _origin_label(finding: EnrichedFinding) -> str:
     """How the finding got onto the record, in plain French."""
     if finding.source is FindingSource.HUMAN:
@@ -83,16 +104,25 @@ def _origin_label(finding: EnrichedFinding) -> str:
     return "Détecté par l'analyse, validé par l'auditeur"
 
 
-def _header(result: EnrichedInspectionResult, style: dict) -> list:
+def _header(
+    result: EnrichedInspectionResult, retained: list[EnrichedFinding], style: dict
+) -> list:
     counts = {value: 0 for value in SEVERITY_ORDER}
-    for finding in result.findings:
+    for finding in retained:
         counts[finding.observed_severity.value] = counts.get(finding.observed_severity.value, 0) + 1
+
+    rejected = sum(
+        1 for f in result.findings if f.validation_status is ValidationStatus.REJECTED
+    )
+    pending = sum(
+        1 for f in result.findings if f.validation_status is ValidationStatus.PENDING
+    )
 
     story = [
         Paragraph("Rapport d'inspection HSE", style["title"]),
         Paragraph(
-            f"Référentiel : <b>{result.referentiel}</b> &nbsp;·&nbsp; "
-            f"Inspection {result.inspection_id}",
+            f"Référentiel : <b>{escape(inspection_prompt.referentiel_label(result.referentiel))}"
+            f"</b> &nbsp;·&nbsp; Inspection {escape(result.inspection_id)}",
             style["sub"],
         ),
         Spacer(1, 8),
@@ -102,7 +132,7 @@ def _header(result: EnrichedInspectionResult, style: dict) -> list:
         ["Prise de vue", _format_datetime(result.captured_at)],
         ["Rapport édité le", date.today().strftime("%d/%m/%Y")],
         ["Scène analysée", result.scene_detected or "non renseignée"],
-        ["Constats retenus", str(len(result.findings))],
+        ["Constats retenus", str(len(retained))],
     ]
     table = Table([[Paragraph(k, style["label"]), Paragraph(v, style["value"])] for k, v in rows],
                   colWidths=[38 * mm, 125 * mm])
@@ -113,6 +143,25 @@ def _header(result: EnrichedInspectionResult, style: dict) -> list:
         ("LINEBELOW", (0, 0), (-1, -2), 0.4, _LINE),
     ]))
     story.append(table)
+
+    # The auditor's exclusions are stated, without asserting their content.
+    excluded: list[str] = []
+    if rejected:
+        excluded.append(
+            f"{rejected} constat{'s' if rejected > 1 else ''} "
+            f"rejeté{'s' if rejected > 1 else ''} par l'auditeur, "
+            "non retenu" + ("s" if rejected > 1 else "") + " dans ce rapport."
+        )
+    if pending:
+        excluded.append(
+            f"{pending} constat{'s' if pending > 1 else ''} en attente de validation, "
+            "non retenu" + ("s" if pending > 1 else "") + " dans ce rapport."
+        )
+    if excluded:
+        story.append(Spacer(1, 8))
+        for line in excluded:
+            story.append(Paragraph(line, style["sub"]))
+
     story.append(Spacer(1, 10))
 
     present = [(v, counts[v]) for v in SEVERITY_ORDER if counts.get(v)]
@@ -129,7 +178,7 @@ def _header(result: EnrichedInspectionResult, style: dict) -> list:
         ] + [("TEXTCOLOR", (i, 0), (i, 0), SEVERITY_COLOR[v]) for i, (v, _) in enumerate(present)]))
         story.append(chips)
 
-    if any(f.immediate for f in result.findings):
+    if any(f.immediate for f in retained):
         stop = Table([[Paragraph(
             "<b>ARRÊT IMMÉDIAT DE L'ACTIVITÉ</b><br/>"
             "Un ou plusieurs constats imposent l'arrêt immédiat des travaux concernés.",
@@ -242,11 +291,12 @@ def build_pdf(result: EnrichedInspectionResult) -> bytes:
         author="Inspection HSE",
     )
 
-    story = _header(result, style)
-    if not result.findings:
+    retained = retained_findings(result)
+    story = _header(result, retained, style)
+    if not retained:
         story.append(Paragraph("Aucune non-conformité retenue à l'issue de la validation.",
                                style["body"]))
-    for index, finding in enumerate(result.findings):
+    for index, finding in enumerate(retained):
         story.append(KeepTogether(_finding_section(result.inspection_id, index, finding, style)))
 
     document.build(story, onFirstPage=_draw_footer, onLaterPages=_draw_footer)

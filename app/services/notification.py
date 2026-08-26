@@ -25,7 +25,7 @@ from app.models.schemas import (
     Severity,
     ValidationStatus,
 )
-from app.services import report, storage
+from app.services import inspection_prompt, report, storage
 from app.services.notifiers.email_notifier import NotificationError
 from app.services.notifiers.email_notifier import send as send_email
 
@@ -228,7 +228,7 @@ def build_html(
         'color:#1a1d21">'
         '<div style="max-width:640px;margin:0 auto">'
         f'<h1 style="font-size:19px;margin:0 0 4px">Inspection HSE — '
-        f"{escape(result.referentiel)}</h1>"
+        f"{escape(inspection_prompt.referentiel_label(result.referentiel))}</h1>"
         f'<div style="font-size:13px;color:#5c6470;margin-bottom:16px">'
         f"Inspection {escape(result.inspection_id)} · {escape(result.scene_detected)}</div>"
         f"{banner}"

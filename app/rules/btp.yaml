@@ -1,5 +1,6 @@
 # Catalogue de regles - inspection chantier BTP
 referentiel: btp
+label: Chantier BTP
 rules:
   - id: BTP-01
     title: Travaux en hauteur proteges contre le risque de chute

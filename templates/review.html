@@ -627,7 +627,8 @@
     }
 
     el.metaRest.textContent =
-      " · référentiel " + result.referentiel + " · " + result.scene_detected +
+      " · " + (payload.referentiel_label || result.referentiel) +
+      " · " + result.scene_detected +
       (result.captured_at
         ? " · prise de vue " + formatCaptured(result.captured_at)
         : " · prise de vue non renseignée");
@@ -638,7 +639,8 @@
 
     if (!result.scene_valid) {
       el.empty.appendChild(node("div", "notice",
-        "La scène ne correspond pas au référentiel « " + result.referentiel +
+        "La scène ne correspond pas au référentiel « " +
+        (payload.referentiel_label || result.referentiel) +
         " » : aucun constat n'a été relevé. Refaites la prise de vue ou " +
         "sélectionnez le bon référentiel."));
       el.bar.hidden = true;
