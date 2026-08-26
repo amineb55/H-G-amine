@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Inspection review</title>
+<title>Revue d'inspection</title>
 <link rel="icon" href="data:,">
 <style>
   :root {
@@ -120,6 +120,7 @@
   dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-faint); margin-bottom: 2px; }
   dd { margin: 0; font-size: 13px; word-break: break-word; }
   dd.due { font-weight: 600; }
+  dd.confidence.low { color: var(--majeur); font-weight: 600; }
   dd.due.now { color: var(--arret); }
 
   .actions { display: flex; gap: 8px; }
@@ -156,19 +157,19 @@
 <body>
 <div class="wrap">
   <header class="page">
-    <h1>Inspection review</h1>
+    <h1>Revue d'inspection</h1>
     <div class="meta">
       <code id="inspection-id"></code>
       <span id="meta-rest"></span>
     </div>
     <div class="disclaimer">
-      AI-assisted analysis, human validation required. Nothing is sent until a
-      reviewer approves it.
+      Analyse assistée par IA — validation humaine requise. Rien n'est transmis
+      tant qu'un valideur n'a pas approuvé.
     </div>
   </header>
 
   <div class="stop-banner" id="stop-banner">
-    Activity must stop
+    Arrêt immédiat de l'activité
     <small id="stop-detail"></small>
   </div>
 
@@ -177,7 +178,7 @@
   <div id="empty-state"></div>
 
   <div class="dispatch-bar" id="dispatch-bar" hidden>
-    <button class="primary" id="dispatch-btn">Dispatch approved</button>
+    <button class="primary" id="dispatch-btn">Transmettre les constats approuvés</button>
     <span class="dispatch-note" id="dispatch-note"></span>
   </div>
   <pre class="result" id="dispatch-result" hidden></pre>
@@ -192,8 +193,8 @@
     arret_immediat: "arret", critique: "critique", majeur: "majeur", mineur: "mineur"
   };
   var SEVERITY_LABEL = {
-    arret_immediat: "Immediate stop", critique: "Critical",
-    majeur: "Major", mineur: "Minor"
+    arret_immediat: "Arrêt immédiat", critique: "Critique",
+    majeur: "Majeur", mineur: "Mineur"
   };
 
   var id = decodeURIComponent(window.location.pathname.split("/").pop());
@@ -232,7 +233,7 @@
     return fetch(url, options).then(function (response) {
       return response.json().then(function (body) {
         if (!response.ok) {
-          throw new Error(body && body.detail ? body.detail : "Request failed");
+          throw new Error(body && body.detail ? body.detail : "La requête a échoué");
         }
         return body;
       });
@@ -241,7 +242,7 @@
 
   function renderSummary(summary, result) {
     el.summary.textContent = "";
-    el.summary.appendChild(chip(null, "Findings", summary.total));
+    el.summary.appendChild(chip(null, "Constats", summary.total));
     SEVERITIES.forEach(function (severity) {
       var count = (summary.by_severity || {})[severity] || 0;
       if (count > 0) {
@@ -249,17 +250,17 @@
       }
     });
     if (summary.requires_review > 0) {
-      el.summary.appendChild(chip(null, "To confirm", summary.requires_review));
+      el.summary.appendChild(chip(null, "Confiance faible", summary.requires_review));
     }
-    el.summary.appendChild(chip(null, "Approved", summary.approved));
-    el.summary.appendChild(chip(null, "Rejected", summary.rejected));
-    el.summary.appendChild(chip(null, "Pending", summary.pending));
+    el.summary.appendChild(chip(null, "Approuvés", summary.approved));
+    el.summary.appendChild(chip(null, "Rejetés", summary.rejected));
+    el.summary.appendChild(chip(null, "En attente", summary.pending));
 
     if (summary.has_immediate_stop) {
       var stopping = result.findings.filter(function (f) { return f.immediate; }).length;
       el.bannerDetail.textContent =
-        stopping + (stopping === 1 ? " finding requires" : " findings require") +
-        " work to stop immediately.";
+        stopping + (stopping === 1 ? " constat impose" : " constats imposent") +
+        " l'arrêt immédiat des travaux.";
       el.banner.style.display = "block";
     } else {
       el.banner.style.display = "none";
@@ -283,14 +284,14 @@
       SEVERITY_LABEL[finding.observed_severity] || finding.observed_severity));
     head.appendChild(node("span", "rule-id", finding.rule_id));
     if (finding.requires_review) {
-      head.appendChild(node("span", "badge review", "To confirm"));
+      head.appendChild(node("span", "badge review", "Confiance faible — à vérifier"));
     }
     if (finding.validation_status !== "pending") {
       head.appendChild(node("span", "badge " + finding.validation_status,
-        finding.validation_status === "approved" ? "Approved" : "Rejected"));
+        finding.validation_status === "approved" ? "Approuvé" : "Rejeté"));
     }
     if (finding.dispatch_state === "ready_to_send") {
-      head.appendChild(node("span", "badge queued", "Ready to send"));
+      head.appendChild(node("span", "badge queued", "Prêt à transmettre"));
     }
     head.appendChild(node("span", "spacer"));
     head.appendChild(node("span", "ts", "t+" + finding.timestamp_sec + "s"));
@@ -303,21 +304,23 @@
     }
 
     var facts = node("dl", "facts");
-    facts.appendChild(fact("Assigned to",
-      finding.assigned_name || "Unassigned"));
-    facts.appendChild(fact("Notified",
-      (finding.notify_emails || []).join(", ") || "Nobody"));
-    facts.appendChild(fact("Due",
-      finding.immediate ? finding.deadline_date + " — now" : finding.deadline_date,
+    facts.appendChild(fact("Responsable",
+      finding.assigned_name || "Non affecté"));
+    facts.appendChild(fact("Notifié",
+      (finding.notify_emails || []).join(", ") || "Personne"));
+    facts.appendChild(fact("Échéance",
+      finding.immediate ? finding.deadline_date + " — immédiat" : finding.deadline_date,
       finding.immediate ? "due now" : "due"));
-    facts.appendChild(fact("Confidence", Math.round(finding.confidence * 100) + "%"));
+    facts.appendChild(fact("Confiance", Math.round(finding.confidence * 100) + "%",
+      finding.requires_review ? "confidence low" : "confidence"));
     facts.appendChild(fact("ISO 45001", finding.iso_45001_clause));
-    facts.appendChild(fact("Status", finding.status === "nc" ? "Non-conformity" : "To verify"));
+    facts.appendChild(fact("Statut",
+      finding.status === "nc" ? "Non-conformité" : "À vérifier"));
     card.appendChild(facts);
 
     var actions = node("div", "actions");
-    actions.appendChild(decisionButton("approve", "Approve", index, finding));
-    actions.appendChild(decisionButton("reject", "Reject", index, finding));
+    actions.appendChild(decisionButton("approve", "Approuver", index, finding));
+    actions.appendChild(decisionButton("reject", "Rejeter", index, finding));
     card.appendChild(actions);
     return card;
   }
@@ -359,24 +362,24 @@
       el.summary.textContent = "";
       el.bar.hidden = true;
       el.empty.appendChild(node("div", payload.error ? "notice error" : "notice",
-        payload.error || "The analysis is still running. Reload in a moment."));
+        payload.error || "L'analyse est en cours. Rechargez la page dans un instant."));
       return;
     }
 
     el.metaRest.textContent =
-      " · referential " + result.referentiel + " · " + result.scene_detected;
+      " · référentiel " + result.referentiel + " · " + result.scene_detected;
     renderSummary(payload.summary, result);
 
     if (!result.scene_valid) {
       el.empty.appendChild(node("div", "notice",
-        "The scene does not match the '" + result.referentiel +
-        "' referential, so no finding was raised. Re-shoot the inspection or " +
-        "pick the right referential."));
+        "La scène ne correspond pas au référentiel « " + result.referentiel +
+        " » : aucun constat n'a été relevé. Refaites la prise de vue ou " +
+        "sélectionnez le bon référentiel."));
       el.bar.hidden = true;
       return;
     }
     if (result.findings.length === 0) {
-      el.empty.appendChild(node("div", "notice", "No non-conformity was observed."));
+      el.empty.appendChild(node("div", "notice", "Aucune non-conformité observée."));
       el.bar.hidden = true;
       return;
     }
@@ -386,16 +389,17 @@
     });
 
     el.bar.hidden = false;
-    var ready = result.findings.filter(function (f) {
-      return f.validation_status === "approved" && !f.requires_review;
-    }).length;
-    var held = result.findings.filter(function (f) {
-      return f.validation_status === "approved" && f.requires_review;
-    }).length;
-    el.dispatchBtn.disabled = ready === 0;
+    // Approval is what makes a finding dispatchable, low confidence included.
+    var approved = result.findings.filter(function (f) {
+      return f.validation_status === "approved";
+    });
+    var fromReview = approved.filter(function (f) { return f.requires_review; }).length;
+    el.dispatchBtn.disabled = approved.length === 0;
     el.dispatchNote.textContent =
-      ready + (ready === 1 ? " finding" : " findings") + " ready" +
-      (held > 0 ? ", " + held + " held back pending confirmation" : "") + ".";
+      approved.length + (approved.length === 1 ? " constat approuvé" : " constats approuvés") +
+      (fromReview > 0
+        ? ", dont " + fromReview + " à confiance faible"
+        : "") + ".";
   }
 
   el.dispatchBtn.addEventListener("click", function () {
@@ -406,11 +410,12 @@
         return request(base + "/review").then(render).then(function () {
           el.dispatchResult.hidden = false;
           el.dispatchResult.textContent =
-            outcome.ready_to_send.length + " finding(s) marked ready to send" +
-            (outcome.skipped_requires_review.length
-              ? ", " + outcome.skipped_requires_review.length + " held back pending confirmation"
+            outcome.ready_to_send.length + " constat(s) marqué(s) prêts à transmettre" +
+            (outcome.approved_from_review.length
+              ? ", dont " + outcome.approved_from_review.length +
+                " approuvé(s) malgré une confiance faible"
               : "") +
-            ". Nothing has been sent yet.\n\n" +
+            ". Aucun envoi n'a encore eu lieu.\n\n" +
             JSON.stringify(outcome.ready_to_send, null, 2);
         });
       })

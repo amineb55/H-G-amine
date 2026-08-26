@@ -176,9 +176,9 @@ class DispatchResponse(BaseModel):
     ready_to_send: list[DispatchedFinding] = Field(
         default_factory=list, description="Findings queued for notification."
     )
-    skipped_requires_review: list[int] = Field(
+    approved_from_review: list[int] = Field(
         default_factory=list,
-        description="Approved findings held back because they still need confirmation.",
+        description="Queued findings that were flagged for review and approved anyway.",
     )
     sent: bool = Field(False, description="Whether anything was actually sent. Always false for now.")
 

@@ -90,9 +90,10 @@ ever reaches the enrichment.
 severity is `arret_immediat`. Addresses are de-duplicated, so roles sharing a
 mailbox are notified once.
 
-Findings whose analysis status is `a_verifier` are enriched like any other but
-carry `requires_review: true`, and dispatch holds them back even when a
-reviewer approves them.
+Findings whose analysis status is `a_verifier` are enriched like any other and
+carry `requires_review: true`. That flag is shown in the review screen so the
+auditor knows the finding is low-confidence, but it does not block dispatch:
+approving is the human act that resolves the doubt.
 
 ## Human validation
 
@@ -101,9 +102,11 @@ Every finding carries `validation_status`, `pending` until a human decides.
 finding that was already queued removes it from the queue.
 
 `POST /inspections/{id}/dispatch` marks approved findings `ready_to_send` and
-returns them with their recipients and deadlines. **It sends nothing** — the
-response always carries `sent: false`, and findings held back for confirmation
-are listed separately in `skipped_requires_review`.
+returns them with their recipients and deadlines. Only findings left `pending`
+or `rejected` are excluded — an approved finding is dispatched whatever its
+confidence, and the ones that were flagged for review are listed in
+`approved_from_review` so the decision stays visible. **It sends nothing**: the
+response always carries `sent: false`.
 
 ### Review screen
 
@@ -112,8 +115,12 @@ no framework and no build step. It loads its data from the review endpoint and
 shows, per finding, the timestamp, rule title, observation, observed severity
 in colour, the severity justification, confidence, ISO 45001 clause, the
 accountable person and the deadline. Findings are ordered most serious first,
-`arret_immediat` ones carry an explicit "activity must stop" banner, and the
-header counts findings by severity and by review state.
+`arret_immediat` ones carry an explicit stop-work banner, and the header counts
+findings by severity and by review state. Low-confidence findings are badged
+and their confidence highlighted, so an auditor approving one sees what they
+are approving.
+
+The screen is in French; the API responses and this README are in English.
 
 ## Processing model
 

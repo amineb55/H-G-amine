@@ -220,7 +220,8 @@ async def dispatch_inspection(inspection_id: str) -> DispatchResponse:
     """Queue the approved findings for notification.
 
     Nothing is sent yet: approved findings are marked ready to send and
-    returned. Findings still awaiting confirmation are held back.
+    returned. A finding flagged for review is dispatched like any other once
+    a human has explicitly approved it.
     """
     _, result = _load_result(inspection_id)
     if result is None:
@@ -230,18 +231,18 @@ async def dispatch_inspection(inspection_id: str) -> DispatchResponse:
         )
 
     queued: list[DispatchedFinding] = []
-    held_back: list[int] = []
+    from_review: list[int] = []
 
     for index, finding in enumerate(result.findings):
+        # Approval is the human act that resolves any doubt, including on a
+        # low-confidence finding. Only what nobody approved is left out.
         if finding.validation_status is not ValidationStatus.APPROVED:
             finding.dispatch_state = DispatchState.NOT_QUEUED
             continue
-        if finding.requires_review:
-            finding.dispatch_state = DispatchState.NOT_QUEUED
-            held_back.append(index)
-            continue
 
         finding.dispatch_state = DispatchState.READY_TO_SEND
+        if finding.requires_review:
+            from_review.append(index)
         queued.append(
             DispatchedFinding(
                 index=index,
@@ -257,7 +258,7 @@ async def dispatch_inspection(inspection_id: str) -> DispatchResponse:
     return DispatchResponse(
         inspection_id=inspection_id,
         ready_to_send=queued,
-        skipped_requires_review=held_back,
+        approved_from_review=from_review,
         sent=False,
     )
 
