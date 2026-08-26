@@ -1,15 +1,63 @@
-# Rule catalog for office ("bureaux") inspections.
-# Example content: replace with the real catalog.
+# Catalogue de regles - inspection bureaux et administrations
 referentiel: bureaux
 rules:
   - id: BUR-01
-    title: Issues de secours et voies d'evacuation degagees
-    default_severity: majeur
-    deadline_days: 7
-    iso_45001_clause: "8.2"
-
-  - id: BUR-02
-    title: Poste de travail sur ecran conforme (siege reglable, ecran a hauteur des yeux)
+    title: Postes de travail amenages pour limiter les risques ergonomiques
     default_severity: mineur
     deadline_days: 30
     iso_45001_clause: "8.1.2"
+  - id: BUR-02
+    title: Installations electriques - prises, cables et equipements en bon etat et correctement utilises
+    default_severity: critique
+    deadline_days: 1
+    iso_45001_clause: "8.1.2"
+  - id: BUR-03
+    title: Moyens incendie - extincteurs, alarmes et equipements de securite accessibles et controles
+    default_severity: critique
+    deadline_days: 1
+    iso_45001_clause: "8.2"
+  - id: BUR-04
+    title: Evacuation - issues et voies d'evacuation libres en permanence
+    default_severity: critique
+    deadline_days: 1
+    iso_45001_clause: "8.2"
+  - id: BUR-05
+    title: Eclairage adapte aux taches et aux zones de circulation
+    default_severity: mineur
+    deadline_days: 30
+    iso_45001_clause: "8.1.2"
+  - id: BUR-06
+    title: Escaliers et circulations degages et securises
+    default_severity: majeur
+    deadline_days: 7
+    iso_45001_clause: "8.1.2"
+  - id: BUR-07
+    title: Sols propres, secs et exempts de risques de chute
+    default_severity: majeur
+    deadline_days: 7
+    iso_45001_clause: "8.1.2"
+  - id: BUR-08
+    title: Ventilation et climatisation entretenues et maintenues en etat
+    default_severity: mineur
+    deadline_days: 30
+    iso_45001_clause: "8.1.2"
+  - id: BUR-09
+    title: Produits chimiques d'entretien identifies, correctement stockes et acces limite
+    default_severity: majeur
+    deadline_days: 7
+    iso_45001_clause: "8.1.2"
+  - id: BUR-10
+    title: Manutention des charges realisee avec des moyens adaptes
+    default_severity: majeur
+    deadline_days: 7
+    iso_45001_clause: "8.1.2"
+  - id: BUR-11
+    title: Trousse de premiers secours disponible, accessible et verifiee
+    default_severity: majeur
+    deadline_days: 7
+    iso_45001_clause: "8.2"
+  - id: BUR-12
+    title: Consignes d'urgence, numeros et procedures d'evacuation accessibles au personnel
+    default_severity: mineur
+    deadline_days: 30
+    iso_45001_clause: "8.2"

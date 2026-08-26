@@ -1,15 +1,63 @@
-# Rule catalog for construction site ("btp") inspections.
-# Example content: replace with the real catalog.
+# Catalogue de regles - inspection chantier BTP
 referentiel: btp
 rules:
   - id: BTP-01
-    title: Port des EPI obligatoires (casque, chaussures de securite, gilet haute visibilite)
+    title: Travaux en hauteur proteges contre le risque de chute
     default_severity: critique
     deadline_days: 1
     iso_45001_clause: "8.1.2"
-
   - id: BTP-02
-    title: Protection collective contre les chutes de hauteur (garde-corps, filets, tremies obturees)
-    default_severity: arret_immediat
-    deadline_days: 0
+    title: Echafaudages correctement montes, securises, controles et utilises conformement a leur destination
+    default_severity: critique
+    deadline_days: 1
+    iso_45001_clause: "8.1.2"
+  - id: BTP-03
+    title: EPI adaptes aux risques et portes correctement par les travailleurs exposes
+    default_severity: majeur
+    deadline_days: 7
+    iso_45001_clause: "8.1.2"
+  - id: BTP-04
+    title: Engins de chantier controles avant utilisation et conduits par des personnes autorisees
+    default_severity: critique
+    deadline_days: 1
+    iso_45001_clause: "7.2"
+  - id: BTP-05
+    title: Circulation chantier - flux engins et pietons organises et separes
+    default_severity: critique
+    deadline_days: 1
+    iso_45001_clause: "8.1.2"
+  - id: BTP-06
+    title: Levage - equipements et accessoires controles, zone d'exclusion materialisee
+    default_severity: critique
+    deadline_days: 1
+    iso_45001_clause: "8.1.2"
+  - id: BTP-07
+    title: Installations electriques provisoires protegees et maintenues en securite
+    default_severity: critique
+    deadline_days: 1
+    iso_45001_clause: "8.1.2"
+  - id: BTP-08
+    title: Fouilles et excavations securisees contre le risque d'effondrement avant acces
+    default_severity: critique
+    deadline_days: 1
+    iso_45001_clause: "8.1.2"
+  - id: BTP-09
+    title: Travaux par points chauds maitrises - soudage, decoupage et travaux generant des etincelles
+    default_severity: critique
+    deadline_days: 1
+    iso_45001_clause: "8.1.2"
+  - id: BTP-10
+    title: Produits chimiques dangereux identifies, stockes et manipules conformement aux mesures applicables
+    default_severity: majeur
+    deadline_days: 7
+    iso_45001_clause: "8.1.2"
+  - id: BTP-11
+    title: Moyens de premiers secours, incendie et evacuation disponibles et accessibles
+    default_severity: critique
+    deadline_days: 1
+    iso_45001_clause: "8.2"
+  - id: BTP-12
+    title: Ordre et proprete - zones de travail degagees pour prevenir chutes et accidents
+    default_severity: mineur
+    deadline_days: 30
     iso_45001_clause: "8.1.2"
