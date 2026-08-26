@@ -17,7 +17,7 @@ from google import genai
 from google.genai import errors, types
 from pydantic import BaseModel, Field, ValidationError
 
-from app.config import get_settings
+from app.config import get_settings, redact
 from app.models.schemas import Finding, InspectionResult
 from app.services.inspection_prompt import PromptError, build_system_prompt
 
@@ -218,7 +218,7 @@ def _as_readable_error(exc: Exception) -> AnalysisProviderError:
         return AnalysisProviderError("The analysis engine did not respond in time.")
     if isinstance(exc, httpx.HTTPError):
         return AnalysisProviderError("The analysis engine could not be reached.")
-    return AnalysisProviderError(f"The analysis engine failed: {exc}")
+    return AnalysisProviderError(redact(f"The analysis engine failed: {exc}"))
 
 
 async def analyze(media_path: str, referentiel: str) -> dict:

@@ -15,7 +15,7 @@ from typing import Any
 
 import httpx
 
-from app.config import get_settings
+from app.config import get_settings, redact
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,13 @@ def _diagnose(exc: Exception, host: str) -> tuple[str, str]:
         return "proxy", f"The proxy refused the connection to '{host}'."
     if isinstance(exc, httpx.ConnectError):
         return "connect", f"The email service at '{host}' could not be reached."
-    return "transport", f"The email service at '{host}' could not be reached."
+    if isinstance(exc, httpx.LocalProtocolError):
+        # This one quotes the offending header value, credentials included.
+        return "malformed_request", (
+            f"The request to '{host}' was rejected as malformed before it was "
+            f"sent: {redact(str(exc))}"
+        )
+    return "transport", f"The email service at '{host}' could not be reached: {redact(str(exc))}"
 
 
 def _readable_error(status_code: int, body: str) -> NotificationError:
@@ -101,7 +107,9 @@ def _readable_error(status_code: int, body: str) -> NotificationError:
     if status_code == 429:
         return NotificationError("The email service is rate limited. Retry later.")
     if status_code == 400:
-        return NotificationError(f"The email service rejected the message as invalid: {body}")
+        return NotificationError(
+            f"The email service rejected the message as invalid: {redact(body)}"
+        )
     if status_code >= 500:
         return NotificationError("The email service is temporarily unavailable. Retry later.")
     return NotificationError(f"The email service refused the message (status {status_code}).")
@@ -168,14 +176,14 @@ async def send(
             "Email transport failure [%s] host=%s recipient=%s: %s: %s "
             "(root cause %s: %s)",
             category, host, to,
-            exc.__class__.__name__, exc,
-            cause.__class__.__name__, cause,
+            exc.__class__.__name__, redact(str(exc)),
+            cause.__class__.__name__, redact(str(cause)),
             exc_info=True,
         )
-        raise NotificationError(message) from exc
+        raise NotificationError(redact(message)) from exc
 
     if response.status_code >= 400:
-        body = response.text[:200]
+        body = redact(response.text[:200])
         logger.error(
             "Email refused [http_%s] host=%s recipient=%s: %s",
             response.status_code, host, to, body,
@@ -225,9 +233,9 @@ def _resolve(host: str, port: int) -> dict[str, Any]:
     try:
         infos = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
     except socket.gaierror as exc:
-        return {"ok": False, "error": f"{exc.__class__.__name__}: {exc}"}
+        return {"ok": False, "error": redact(f"{exc.__class__.__name__}: {exc}")}
     except Exception as exc:  # noqa: BLE001
-        return {"ok": False, "error": f"{exc.__class__.__name__}: {exc}"}
+        return {"ok": False, "error": redact(f"{exc.__class__.__name__}: {exc}")}
     addresses = sorted({info[4][0] for info in infos})
     return {"ok": True, "addresses": addresses}
 
@@ -259,8 +267,8 @@ def _connect(host: str, port: int, timeout: float, use_tls: bool) -> dict[str, A
         return {
             "ok": False,
             "category": category,
-            "error": f"{cause.__class__.__name__}: {cause}",
-            "message": message,
+            "error": redact(f"{cause.__class__.__name__}: {cause}"),
+            "message": redact(message),
         }
 
 
@@ -287,8 +295,8 @@ async def _account_probe(timeout: float) -> dict[str, Any]:
             "ok": False,
             "host": host,
             "category": category,
-            "error": f"{cause.__class__.__name__}: {cause}",
-            "message": message,
+            "error": redact(f"{cause.__class__.__name__}: {cause}"),
+            "message": redact(message),
         }
 
     result: dict[str, Any] = {"ok": response.status_code < 400,

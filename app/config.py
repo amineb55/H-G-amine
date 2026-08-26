@@ -2,7 +2,9 @@
 
 from functools import lru_cache
 
-from pydantic import AliasChoices, Field
+from typing import ClassVar
+
+from pydantic import AliasChoices, Field, PrivateAttr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -71,6 +73,57 @@ class Settings(BaseSettings):
     notifier_api_url: str = ""
 
 
+    # Environment variables whose value is a secret. Whitespace around them is
+    # stripped: a value injected from a secret store often carries a trailing
+    # newline, and a newline in an HTTP header makes the request illegal.
+    _SECRET_FIELDS: ClassVar[dict[str, str]] = {
+        "ANALYSIS_ENGINE_API_KEY": "analysis_engine_api_key",
+        "NOTIFIER_API_KEY": "notifier_api_key",
+        "NOTIFIER_SENDER_EMAIL": "notifier_sender_email",
+    }
+    # Not secret, but a stray newline breaks them just as badly.
+    _TRIMMED_FIELDS: ClassVar[tuple[str, ...]] = (
+        "store_project_id", "evidence_bucket", "notifier_api_url",
+        "analysis_engine_model", "notifier_sender_name",
+    )
+
+    _stripped: list[str] = PrivateAttr(default_factory=list)
+
+    @model_validator(mode="after")
+    def _trim_values(self) -> "Settings":
+        stripped: list[str] = []
+        for variable, attribute in self._SECRET_FIELDS.items():
+            raw = getattr(self, attribute)
+            if isinstance(raw, str) and raw != raw.strip():
+                setattr(self, attribute, raw.strip())
+                stripped.append(variable)
+        for attribute in self._TRIMMED_FIELDS:
+            raw = getattr(self, attribute, None)
+            if isinstance(raw, str) and raw != raw.strip():
+                setattr(self, attribute, raw.strip())
+        self._stripped = stripped
+        return self
+
+    def stripped_secrets(self) -> list[str]:
+        """Names of the secrets that carried surrounding whitespace.
+
+        Only names — a value is never returned.
+        """
+        return list(self._stripped)
+
+    def secret_values(self) -> list[str]:
+        """The configured secret values, longest first.
+
+        Used only to scrub them out of text that is about to be logged or
+        returned. Never call this to display or transmit a value.
+        """
+        values = [getattr(self, attribute) for attribute in self._SECRET_FIELDS.values()]
+        return sorted(
+            (value.strip() for value in values if isinstance(value, str) and len(value.strip()) >= 6),
+            key=len,
+            reverse=True,
+        )
+
     def missing_secrets(self) -> list[str]:
         """Names of the secrets that must be provided but are not set.
 
@@ -89,3 +142,25 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return the cached settings instance."""
     return Settings()
+
+
+REDACTION_PLACEHOLDER = "[REDACTED]"
+
+
+def redact(text: str) -> str:
+    """Replace any configured secret value found in ``text``.
+
+    Library exceptions quote the offending input back at you — an illegal
+    header value carries the credential inside the message. Anything derived
+    from an exception passes through here before it is logged or returned.
+    """
+    if not text:
+        return text
+    try:
+        secrets = get_settings().secret_values()
+    except Exception:  # noqa: BLE001 - redaction must never raise
+        return text
+    for value in secrets:
+        if value in text:
+            text = text.replace(value, REDACTION_PLACEHOLDER)
+    return text

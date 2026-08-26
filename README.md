@@ -215,6 +215,22 @@ a sender are configured, the host being contacted, and each step's outcome.
 }
 ```
 
+Any text derived from an exception — the wrapped message, the log line, the
+traceback, and every field of the diagnostic response — is scrubbed of the
+configured secret values first. A library that rejects a malformed request
+quotes the offending input back at you, credentials included, so redaction is
+applied at the formatter as well as at each call site: a value shorter than
+six characters is left alone rather than mangling unrelated text.
+
+Secrets are also stripped of surrounding whitespace when read. A value
+injected from a secret store often carries a trailing newline, which makes an
+HTTP header illegal and produces exactly the kind of error that leaks the
+value. Startup names any variable that had to be stripped, never its value:
+
+```
+WARNING Surrounding whitespace was stripped from: NOTIFIER_API_KEY.
+```
+
 This endpoint is **temporary diagnostic tooling**. It is unauthenticated like
 the rest of the service, so it does disclose the provider host and whether
 credentials are set — remove it once the problem is understood.

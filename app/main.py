@@ -18,7 +18,7 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse, JSONResponse, Response
 
-from app.config import get_settings
+from app.config import get_settings, redact
 from app.models.schemas import (
     DispatchRequest,
     DispatchResponse,
@@ -51,12 +51,28 @@ REVIEW_PAGE = Path(__file__).resolve().parent.parent / "templates" / "review.htm
 
 settings = get_settings()
 
+class RedactingFormatter(logging.Formatter):
+    """Scrub configured secret values out of everything that is logged.
+
+    Redacting the message alone is not enough: a traceback rendered from
+    ``exc_info`` carries the exception's own text, and a library that rejects
+    a malformed header quotes the credential back inside it. Formatting the
+    whole record and scrubbing the result covers both.
+    """
+
+    def format(self, record: logging.LogRecord) -> str:
+        return redact(super().format(record))
+
+
 # The server's own logging config leaves the root logger alone, so application
 # logs — the store's state, per-call token usage — would never be emitted.
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
     format="%(levelname)s:     %(name)s - %(message)s",
 )
+for _handler in logging.getLogger().handlers:
+    _handler.setFormatter(RedactingFormatter("%(levelname)s:     %(name)s - %(message)s"))
+
 logger = logging.getLogger(__name__)
 
 
@@ -68,6 +84,15 @@ async def lifespan(_: FastAPI):
     a loud log line, and every request that needs it says why it failed.
     Secret values are never logged — only the names of the ones missing.
     """
+    stripped = settings.stripped_secrets()
+    if stripped:
+        logger.warning(
+            "Surrounding whitespace was stripped from: %s. A value injected "
+            "with a trailing newline would otherwise make an HTTP header "
+            "illegal. Fix the stored secret to remove the warning.",
+            ", ".join(stripped),
+        )
+
     missing = settings.missing_secrets()
     if missing:
         logger.error(
