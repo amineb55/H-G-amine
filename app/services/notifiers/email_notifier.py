@@ -6,6 +6,7 @@ endpoint, its payload shape and its status codes all stop here. Callers see
 """
 
 import logging
+from base64 import b64encode
 
 import httpx
 
@@ -35,8 +36,21 @@ def _readable_error(status_code: int, body: str) -> NotificationError:
     return NotificationError(f"The email service refused the message (status {status_code}).")
 
 
-async def send(to: str, subject: str, html: str) -> str:
+async def send(
+    to: str,
+    subject: str,
+    html: str,
+    attachments: list[tuple[str, bytes]] | None = None,
+    cc: list[str] | None = None,
+) -> str:
     """Send one HTML email and return the provider's message id.
+
+    Args:
+        to: Address of the recipient.
+        subject: Subject line.
+        html: Body of the message.
+        attachments: ``(filename, content)`` pairs to attach.
+        cc: Addresses copied on the message.
 
     Raises:
         NotificationError: With a readable message when the send fails.
@@ -49,12 +63,21 @@ async def send(to: str, subject: str, html: str) -> str:
     if not sender:
         raise NotificationError("The email service is not configured: no sender address is set.")
 
-    payload = {
+    payload: dict = {
         "sender": {"email": sender, "name": settings.notifier_sender_name},
         "to": [{"email": to}],
         "subject": subject,
         "htmlContent": html,
     }
+    # A copy never goes to the recipient's own address twice.
+    copies = [address for address in (cc or []) if address != to]
+    if copies:
+        payload["cc"] = [{"email": address} for address in copies]
+    if attachments:
+        payload["attachment"] = [
+            {"name": name, "content": b64encode(content).decode("ascii")}
+            for name, content in attachments
+        ]
     headers = {
         "api-key": api_key,
         "accept": "application/json",

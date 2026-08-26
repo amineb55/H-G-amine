@@ -46,9 +46,14 @@ Severity values, from most to least serious:
 - majeur         : significant risk requiring planned corrective action
 - mineur         : minor deviation, low risk
 
-TIMESTAMPS
-Set timestamp_sec to the moment in the video where the observation is visible,
-in whole seconds from the start. For images, use 0.
+WHERE THE OBSERVATION IS VISIBLE
+For a video, set timestamp_sec to the moment the observation is visible, in
+whole seconds from the start. A still is extracted at that exact second and
+kept as the evidence for the finding, so give the second where the situation
+is clearest.
+For images, set timestamp_sec to the 0-based index of the image in which you
+observed it: 0 for the first image supplied, 1 for the second, and so on. That
+image is kept as the evidence for the finding.
 
 OUTPUT
 Return JSON only, matching the requested schema. No prose, no explanation

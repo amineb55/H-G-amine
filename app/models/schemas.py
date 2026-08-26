@@ -1,9 +1,14 @@
 """Pydantic models for the HSE inspection finding schema."""
 
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field
+import re
+
+from pydantic import BaseModel, Field, field_validator
+
+
+_EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class Severity(str, Enum):
@@ -27,6 +32,13 @@ class Referentiel(str, Enum):
 
     BUREAUX = "bureaux"
     BTP = "btp"
+
+
+class FindingSource(str, Enum):
+    """Who put a finding on the record."""
+
+    AI = "ai"
+    HUMAN = "human"
 
 
 class ValidationStatus(str, Enum):
@@ -98,6 +110,19 @@ class EnrichedFinding(Finding):
     """A finding with its assignment, deadline and validation state."""
 
     rule_title: str | None = Field(None, description="What the breached rule requires.")
+    evidence_image: str | None = Field(
+        None, description="File name of the retained evidence image."
+    )
+    source: FindingSource = Field(
+        FindingSource.AI, description="Whether the analysis or an auditor raised it."
+    )
+    edited_by_human: bool = Field(False, description="Whether an auditor corrected it.")
+    original_severity: Severity | None = Field(
+        None, description="Severity the analysis reported, when an auditor changed it."
+    )
+    original_observation: str | None = Field(
+        None, description="Observation the analysis reported, when an auditor changed it."
+    )
     assigned_role: str | None = Field(None, description="Role accountable for the finding.")
     assigned_email: str | None = Field(None, description="Address of the accountable role.")
     assigned_name: str | None = Field(None, description="Label of the accountable role.")
@@ -130,6 +155,9 @@ class EnrichedInspectionResult(BaseModel):
     referentiel: str = Field(..., description="Referential applied to the analysis.")
     scene_valid: bool = Field(..., description="Whether the scene is exploitable.")
     scene_detected: str = Field(..., description="Type of scene detected in the media.")
+    captured_at: datetime | None = Field(
+        None, description="When the media was shot, read from its metadata. Never inferred."
+    )
     findings: list[EnrichedFinding] = Field(
         default_factory=list, description="Findings raised by the analysis."
     )
@@ -182,6 +210,7 @@ class EmailOutcome(BaseModel):
     finding_indexes: list[int] = Field(
         default_factory=list, description="Findings carried by this email."
     )
+    cc: list[str] = Field(default_factory=list, description="Addresses copied on the email.")
     message_id: str | None = Field(None, description="Identifier returned by the email service.")
     error: str | None = Field(None, description="Why the email failed, when it did.")
 
@@ -212,3 +241,44 @@ class DispatchResponse(BaseModel):
 # InspectionState is declared before EnrichedInspectionResult exists, so its
 # forward reference is resolved once the module is fully loaded.
 InspectionState.model_rebuild()
+
+
+class FindingEdit(BaseModel):
+    """An auditor's correction to a finding. Omitted fields are left alone."""
+
+    observed_severity: Severity | None = Field(None, description="Severity the auditor retains.")
+    observation: str | None = Field(None, min_length=1, description="Corrected observation.")
+    rule_id: str | None = Field(None, min_length=1, description="Rule the auditor attributes it to.")
+    assigned_role: str | None = Field(None, min_length=1, description="Role the auditor assigns.")
+
+
+class ManualFinding(BaseModel):
+    """A finding an auditor adds because the analysis missed it."""
+
+    rule_id: str = Field(..., min_length=1, description="Rule that is breached.")
+    observation: str = Field(..., min_length=1, description="What the auditor observed.")
+    observed_severity: Severity = Field(..., description="Severity the auditor retains.")
+    timestamp_sec: int = Field(0, ge=0, description="Where in the media it is visible.")
+
+
+class DispatchRequest(BaseModel):
+    """Options for one dispatch."""
+
+    cc: list[str] = Field(
+        default_factory=list,
+        description="Extra addresses copied on every email of this dispatch.",
+    )
+
+    @field_validator("cc")
+    @classmethod
+    def _check_addresses(cls, values: list[str]) -> list[str]:
+        cleaned: list[str] = []
+        for raw in values:
+            address = raw.strip()
+            if not address:
+                continue
+            if not _EMAIL_PATTERN.match(address):
+                raise ValueError(f"'{address}' is not a valid address")
+            if address not in cleaned:
+                cleaned.append(address)
+        return cleaned

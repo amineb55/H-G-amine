@@ -3,7 +3,7 @@
 import logging
 
 from app.models.schemas import InspectionResult, InspectionStatus
-from app.services import analysis_engine, assignment, inspection_store, storage
+from app.services import analysis_engine, assignment, evidence, inspection_store, storage
 
 logger = logging.getLogger(__name__)
 
@@ -12,8 +12,8 @@ async def run_inspection(inspection_id: str, referentiel: str) -> None:
     """Analyze the media held for an inspection and record the outcome.
 
     Any failure is recorded on the inspection rather than raised, so a bad
-    job never takes the server down. The media is deleted at the end either
-    way: only the result is retained.
+    job never takes the server down. The source media is deleted at the end
+    either way: only the evidence behind a finding is retained.
     """
     try:
         media_path = storage.path(inspection_id)
@@ -22,6 +22,14 @@ async def run_inspection(inspection_id: str, referentiel: str) -> None:
             {**raw, "inspection_id": inspection_id, "referentiel": referentiel}
         )
         enriched = assignment.enrich(result)
+
+        # Read the capture time and cut the evidence before the media goes.
+        try:
+            enriched.captured_at = evidence.read_capture_time(media_path)
+            evidence.build(inspection_id, media_path, enriched.findings)
+        except Exception:  # noqa: BLE001 - evidence is not worth failing over
+            logger.exception("Could not build evidence for inspection %s", inspection_id)
+
         inspection_store.update(
             inspection_id,
             status=InspectionStatus.DONE,

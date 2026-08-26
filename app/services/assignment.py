@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, ValidationError, field_validator, model_v
 
 from app.models.schemas import (
     EnrichedFinding,
+    FindingSource,
     EnrichedInspectionResult,
     Finding,
     InspectionResult,
@@ -199,6 +200,11 @@ def _severity_rank(finding: EnrichedFinding) -> tuple[int, int]:
     return rank, finding.timestamp_sec
 
 
+def sort_findings(findings: list[EnrichedFinding]) -> list[EnrichedFinding]:
+    """Order findings most serious first."""
+    return sorted(findings, key=_severity_rank)
+
+
 def enrich(result: InspectionResult, *, today: date | None = None) -> EnrichedInspectionResult:
     """Enrich every finding of a result and order them by severity."""
     findings = [
@@ -239,3 +245,74 @@ def summarize(result: EnrichedInspectionResult | None) -> ReviewSummary:
         pending=counts[ValidationStatus.PENDING.value],
         has_immediate_stop=any(f.immediate for f in result.findings),
     )
+
+
+def recompute(
+    finding: EnrichedFinding, referentiel: str, *, today: date | None = None
+) -> EnrichedFinding:
+    """Recompute what depends on a finding's rule, severity and assigned role.
+
+    Called after an auditor edits a finding: the rule title, the accountable
+    role, the deadline and the recipients all follow from the new values. An
+    ``assigned_role`` the auditor set by hand wins over the catalog.
+    """
+    catalog = load_responsables()
+    today = today or date.today()
+
+    rule = _find_rule(referentiel, finding.rule_id)
+    finding.rule_title = rule.title if rule is not None else None
+
+    role_key = finding.assigned_role or catalog.assignments.get(finding.rule_id)
+    role = catalog.roles.get(role_key) if role_key else None
+
+    finding.assigned_role = role_key if role is not None else None
+    finding.assigned_email = role.email if role is not None else None
+    finding.assigned_name = role.name if role is not None else None
+
+    finding.immediate = finding.observed_severity == Severity.ARRET_IMMEDIAT
+    finding.deadline_date = today + timedelta(days=_deadline_days(finding, rule))
+
+    notify: list[str] = []
+    if role is not None:
+        notify.append(role.email)
+    if finding.immediate:
+        escalated_key = catalog.escalation.arret_immediat_also_notifies
+        escalated = catalog.roles.get(escalated_key) if escalated_key else None
+        if escalated is not None:
+            notify.append(escalated.email)
+    finding.notify_emails = list(dict.fromkeys(notify))
+
+    finding.requires_review = finding.status == Status.A_VERIFIER
+    return finding
+
+
+def known_roles() -> dict[str, str]:
+    """Role keys mapped to their label, for the review screen's dropdown."""
+    return {key: role.name for key, role in load_responsables().roles.items()}
+
+
+def build_manual_finding(
+    rule_id: str,
+    observation: str,
+    observed_severity: Severity,
+    referentiel: str,
+    *,
+    timestamp_sec: int = 0,
+    today: date | None = None,
+) -> EnrichedFinding:
+    """Build a finding an auditor added by hand."""
+    rule = _find_rule(referentiel, rule_id)
+    finding = EnrichedFinding(
+        timestamp_sec=timestamp_sec,
+        rule_id=rule_id,
+        observation=observation,
+        default_severity=rule.default_severity if rule is not None else observed_severity,
+        observed_severity=observed_severity,
+        severity_reason="Constat ajouté par l'auditeur lors de la validation.",
+        iso_45001_clause=rule.iso_45001_clause if rule is not None else "",
+        confidence=1.0,
+        status=Status.NC,
+        deadline_date=today or date.today(),
+        source=FindingSource.HUMAN,
+    )
+    return recompute(finding, referentiel, today=today)

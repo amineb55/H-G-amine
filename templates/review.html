@@ -148,6 +148,35 @@
   button.primary:hover:not(:disabled) { background: #33383f; }
   .dispatch-note { font-size: 13px; color: var(--ink-soft); }
 
+  .evidence {
+    display: block; width: 100%; max-width: 420px; border-radius: 6px;
+    border: 1px solid var(--border); margin-bottom: 12px;
+  }
+  .badge.edited { background: #eef1f4; }
+  .badge.manual { background: #e9f3f7; border-color: #c4dfe9; color: var(--mineur); }
+  .editor { border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px; }
+  .editor label { display: block; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--ink-faint); margin-bottom: 3px; }
+  .editor .row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; }
+  .editor .row > div { flex: 1 1 200px; min-width: 0; }
+  select, textarea, input[type="text"] {
+    font: inherit; font-size: 13px; width: 100%; padding: 7px 9px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface); color: var(--ink);
+  }
+  textarea { resize: vertical; min-height: 72px; }
+  .original { font-size: 12px; color: var(--ink-faint); margin-top: 8px; }
+  .cc-field { flex: 1 1 260px; min-width: 200px; }
+  .cc-field label { display: block; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--ink-faint); margin-bottom: 3px; }
+  .cc-error { color: var(--arret); font-size: 12px; margin-top: 4px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 4px; }
+  a.button {
+    font-size: 13px; padding: 7px 14px; border: 1px solid var(--border);
+    border-radius: 6px; background: var(--surface); color: var(--ink);
+    text-decoration: none; display: inline-block;
+  }
+  a.button:hover { background: #f0f2f4; }
   .notice { padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); }
   .notice.error { background: var(--arret-bg); border-color: #f3c6c2; color: var(--arret); }
   pre.result {
@@ -176,10 +205,21 @@
   </div>
 
   <div class="summary" id="summary"></div>
+  <div class="toolbar" id="toolbar" hidden>
+    <a class="button" id="pdf-link" href="#" target="_blank" rel="noopener">
+      Télécharger le rapport PDF</a>
+    <button id="add-btn">Ajouter un constat</button>
+  </div>
+  <div id="add-form"></div>
   <div id="findings"></div>
   <div id="empty-state"></div>
 
   <div class="dispatch-bar" id="dispatch-bar" hidden>
+    <div class="cc-field">
+      <label for="cc-input">Copie à (adresses séparées par des virgules)</label>
+      <input type="text" id="cc-input" placeholder="prenom.nom@exemple.fr, autre@exemple.fr">
+      <div class="cc-error" id="cc-error" hidden></div>
+    </div>
     <button class="primary" id="dispatch-btn">Transmettre les constats approuvés</button>
     <span class="dispatch-note" id="dispatch-note"></span>
   </div>
@@ -214,8 +254,41 @@
     bar: document.getElementById("dispatch-bar"),
     dispatchBtn: document.getElementById("dispatch-btn"),
     dispatchNote: document.getElementById("dispatch-note"),
-    dispatchResult: document.getElementById("dispatch-result")
+    dispatchResult: document.getElementById("dispatch-result"),
+    toolbar: document.getElementById("toolbar"),
+    pdfLink: document.getElementById("pdf-link"),
+    addBtn: document.getElementById("add-btn"),
+    addForm: document.getElementById("add-form"),
+    ccInput: document.getElementById("cc-input"),
+    ccError: document.getElementById("cc-error")
   };
+
+  var SEVERITY_CHOICES = [
+    ["arret_immediat", "Arrêt immédiat"], ["critique", "Critique"],
+    ["majeur", "Majeur"], ["mineur", "Mineur"]
+  ];
+  var options = { rules: [], roles: [] };
+  var editing = null;   // index du constat en cours d'édition
+
+  function select(name, choices, current) {
+    var sel = node("select");
+    sel.name = name;
+    choices.forEach(function (choice) {
+      var opt = node("option", null, choice[1]);
+      opt.value = choice[0];
+      if (choice[0] === current) { opt.selected = true; }
+      sel.appendChild(opt);
+    });
+    return sel;
+  }
+
+  function ruleChoices() {
+    return options.rules.map(function (r) { return [r.id, r.id + " — " + r.title]; });
+  }
+
+  function roleChoices() {
+    return options.roles.map(function (r) { return [r.key, r.name]; });
+  }
 
   function node(tag, className, text) {
     var n = document.createElement(tag);
@@ -292,6 +365,11 @@
       head.appendChild(node("span", "badge " + finding.validation_status,
         finding.validation_status === "approved" ? "Approuvé" : "Rejeté"));
     }
+    if (finding.source === "human") {
+      head.appendChild(node("span", "badge manual", "Ajouté par l'auditeur"));
+    } else if (finding.edited_by_human) {
+      head.appendChild(node("span", "badge edited", "Corrigé par l'auditeur"));
+    }
     if (finding.dispatch_status === "sent") {
       head.appendChild(node("span", "badge queued", "Transmis"));
     } else if (finding.dispatch_status === "failed") {
@@ -302,6 +380,13 @@
     card.appendChild(head);
 
     if (finding.rule_title) { card.appendChild(node("div", "title", finding.rule_title)); }
+    if (finding.evidence_image) {
+      var img = node("img", "evidence");
+      img.src = base + "/evidence/" + encodeURIComponent(finding.evidence_image);
+      img.alt = "Image probante du constat";
+      img.loading = "lazy";
+      card.appendChild(img);
+    }
     card.appendChild(node("div", "observation", finding.observation));
     if (finding.severity_reason) {
       card.appendChild(node("div", "reason", finding.severity_reason));
@@ -330,8 +415,133 @@
     var actions = node("div", "actions");
     actions.appendChild(decisionButton("approve", "Approuver", index, finding));
     actions.appendChild(decisionButton("reject", "Rejeter", index, finding));
+    var edit = node("button", "edit", editing === index ? "Annuler" : "Modifier");
+    edit.addEventListener("click", function () {
+      editing = editing === index ? null : index;
+      render(state);
+    });
+    actions.appendChild(edit);
     card.appendChild(actions);
+
+    if (finding.original_severity || finding.original_observation) {
+      var was = [];
+      if (finding.original_severity) {
+        was.push("gravité initiale : " + (SEVERITY_LABEL[finding.original_severity] ||
+          finding.original_severity));
+      }
+      if (finding.original_observation) {
+        was.push("observation initiale : « " + finding.original_observation + " »");
+      }
+      card.appendChild(node("div", "original", "Analyse d'origine — " + was.join(" · ")));
+    }
+    if (editing === index) { card.appendChild(editorFor(index, finding)); }
     return card;
+  }
+
+  function editorFor(index, finding) {
+    var box = node("div", "editor");
+    var row1 = node("div", "row");
+
+    var sevBox = node("div");
+    sevBox.appendChild(node("label", null, "Gravité retenue"));
+    var sev = select("observed_severity", SEVERITY_CHOICES, finding.observed_severity);
+    sevBox.appendChild(sev);
+    row1.appendChild(sevBox);
+
+    var ruleBox = node("div");
+    ruleBox.appendChild(node("label", null, "Règle"));
+    var rule = select("rule_id", ruleChoices(), finding.rule_id);
+    ruleBox.appendChild(rule);
+    row1.appendChild(ruleBox);
+
+    var roleBox = node("div");
+    roleBox.appendChild(node("label", null, "Responsable"));
+    var role = select("assigned_role", roleChoices(), finding.assigned_role);
+    roleBox.appendChild(role);
+    row1.appendChild(roleBox);
+    box.appendChild(row1);
+
+    var obsBox = node("div");
+    obsBox.appendChild(node("label", null, "Observation"));
+    var obs = node("textarea");
+    obs.value = finding.observation;
+    obsBox.appendChild(obs);
+    box.appendChild(obsBox);
+
+    var actions = node("div", "actions");
+    actions.style.marginTop = "10px";
+    var save = node("button", "primary", "Enregistrer la correction");
+    save.addEventListener("click", function () {
+      var payload = {};
+      if (sev.value !== finding.observed_severity) { payload.observed_severity = sev.value; }
+      if (rule.value !== finding.rule_id) { payload.rule_id = rule.value; }
+      if (role.value !== finding.assigned_role) { payload.assigned_role = role.value; }
+      if (obs.value.trim() && obs.value.trim() !== finding.observation) {
+        payload.observation = obs.value.trim();
+      }
+      if (Object.keys(payload).length === 0) { editing = null; render(state); return; }
+      setBusy(true);
+      request(base + "/findings/" + index, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      }).then(function (payload) { editing = null; render(payload); })
+        .catch(showError)
+        .then(function () { setBusy(false); });
+    });
+    actions.appendChild(save);
+    box.appendChild(actions);
+    return box;
+  }
+
+  function addFormMarkup() {
+    var box = node("div", "card");
+    box.appendChild(node("div", "title", "Ajouter un constat"));
+    var body = node("div", "editor");
+    body.style.borderTop = "none";
+    body.style.paddingTop = "0";
+
+    var row = node("div", "row");
+    var sevBox = node("div");
+    sevBox.appendChild(node("label", null, "Gravité retenue"));
+    var sev = select("observed_severity", SEVERITY_CHOICES, "majeur");
+    sevBox.appendChild(sev); row.appendChild(sevBox);
+
+    var ruleBox = node("div");
+    ruleBox.appendChild(node("label", null, "Règle"));
+    var rule = select("rule_id", ruleChoices(), null);
+    ruleBox.appendChild(rule); row.appendChild(ruleBox);
+    body.appendChild(row);
+
+    var obsBox = node("div");
+    obsBox.appendChild(node("label", null, "Observation"));
+    var obs = node("textarea");
+    obs.placeholder = "Décrivez ce que vous avez constaté sur le terrain.";
+    obsBox.appendChild(obs); body.appendChild(obsBox);
+
+    var actions = node("div", "actions");
+    actions.style.marginTop = "10px";
+    var save = node("button", "primary", "Enregistrer le constat");
+    save.addEventListener("click", function () {
+      if (!obs.value.trim()) { obs.focus(); return; }
+      setBusy(true);
+      request(base + "/findings", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          rule_id: rule.value, observation: obs.value.trim(),
+          observed_severity: sev.value
+        })
+      }).then(function (payload) { el.addForm.textContent = ""; render(payload); })
+        .catch(showError)
+        .then(function () { setBusy(false); });
+    });
+    var cancel = node("button", null, "Annuler");
+    cancel.addEventListener("click", function () { el.addForm.textContent = ""; });
+    actions.appendChild(save); actions.appendChild(cancel);
+    body.appendChild(actions);
+    box.appendChild(body);
+    return box;
   }
 
   function decisionButton(kind, label, index, finding) {
@@ -368,6 +578,36 @@
     el.empty.appendChild(node("div", "notice error", error.message || String(error)));
   }
 
+  function formatCaptured(raw) {
+    var d = new Date(raw);
+    if (isNaN(d.getTime())) { return raw; }
+    var pad = function (n) { return (n < 10 ? "0" : "") + n; };
+    return pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear() +
+      " à " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  function loadOptions(referentiel) {
+    if (options.rules.length) { return; }
+    fetch("/referentiels/" + encodeURIComponent(referentiel) + "/options")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (payload) { if (payload) { options = payload; } })
+      .catch(function () { /* l'édition reste possible sans les libellés */ });
+  }
+
+  function parseCc() {
+    var raw = el.ccInput.value.trim();
+    if (!raw) { return []; }
+    var pattern = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+    var bad = [];
+    var list = raw.split(",").map(function (x) { return x.trim(); })
+      .filter(function (x) { return x.length > 0; });
+    list.forEach(function (address) {
+      if (!pattern.test(address)) { bad.push(address); }
+    });
+    if (bad.length) { throw new Error("Adresse invalide : " + bad.join(", ")); }
+    return list;
+  }
+
   function render(payload) {
     state = payload;
     el.id.textContent = payload.inspection_id;
@@ -377,6 +617,7 @@
 
     var result = payload.result;
     if (!result) {
+      el.toolbar.hidden = true;
       el.metaRest.textContent = " · " + payload.status;
       el.summary.textContent = "";
       el.bar.hidden = true;
@@ -386,7 +627,13 @@
     }
 
     el.metaRest.textContent =
-      " · référentiel " + result.referentiel + " · " + result.scene_detected;
+      " · référentiel " + result.referentiel + " · " + result.scene_detected +
+      (result.captured_at
+        ? " · prise de vue " + formatCaptured(result.captured_at)
+        : " · prise de vue non renseignée");
+    el.toolbar.hidden = false;
+    el.pdfLink.href = base + "/report.pdf";
+    loadOptions(result.referentiel);
     renderSummary(payload.summary, result);
 
     if (!result.scene_valid) {
@@ -418,8 +665,10 @@
     }).length;
     var fromReview = pendingSend.filter(function (f) { return f.requires_review; }).length;
     el.dispatchBtn.disabled = pendingSend.length === 0;
-    el.dispatchBtn.title = pendingSend.length === 0
-      ? "Tous les constats approuvés ont déjà été transmis." : "";
+    el.dispatchBtn.title = pendingSend.length > 0 ? ""
+      : (sent > 0
+          ? "Tous les constats approuvés ont déjà été transmis."
+          : "Approuvez au moins un constat pour pouvoir le transmettre.");
     el.dispatchNote.textContent =
       (pendingSend.length === 0
         ? "Rien à envoyer"
@@ -428,9 +677,27 @@
       (sent > 0 ? " · " + sent + " déjà transmis" : "") + ".";
   }
 
+  el.addBtn.addEventListener("click", function () {
+    if (el.addForm.firstChild) { el.addForm.textContent = ""; return; }
+    el.addForm.appendChild(addFormMarkup());
+  });
+
   el.dispatchBtn.addEventListener("click", function () {
+    var cc;
+    try {
+      cc = parseCc();
+      el.ccError.hidden = true;
+    } catch (error) {
+      el.ccError.textContent = error.message;
+      el.ccError.hidden = false;
+      return;
+    }
     setBusy(true);
-    request(base + "/dispatch", { method: "POST" })
+    request(base + "/dispatch", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cc: cc })
+    })
       .then(function (outcome) {
         // Re-render first: render() clears the panel, so fill it afterwards.
         return request(base + "/review").then(render).then(function () {
@@ -446,6 +713,9 @@
           if (outcome.unassigned.length) {
             lines.push(outcome.unassigned.length +
               " constat(s) approuvé(s) sans destinataire : rien n'a pu être envoyé.");
+          }
+          if (outcome.emails.length && outcome.emails[0].cc.length) {
+            lines.push("Copie à : " + outcome.emails[0].cc.join(", "));
           }
           outcome.emails.forEach(function (mail) {
             lines.push(

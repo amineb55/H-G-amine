@@ -20,6 +20,8 @@ app/
   services/inspection_prompt.py rule catalogs and system prompt assembly
   services/assignment.py        assignment, deadlines and review summary
   services/notification.py      grouping findings into per-recipient emails
+  services/evidence.py          evidence frames and capture time
+  services/report.py            the French PDF report
   services/notifiers/           email provider implementation
   services/storage.py           media storage (local filesystem)
   services/inspection_store.py  inspection state (in-memory)
@@ -43,6 +45,10 @@ requirements.txt
 | `POST` | `/inspections/{id}/findings/{index}/approve` | Approve one finding. |
 | `POST` | `/inspections/{id}/findings/{index}/reject` | Reject one finding. |
 | `POST` | `/inspections/{id}/dispatch` | Email the approved findings to their owners. |
+| `PATCH` | `/inspections/{id}/findings/{index}` | Correct a finding. |
+| `POST` | `/inspections/{id}/findings` | Add a finding the analysis missed. |
+| `GET` | `/inspections/{id}/evidence/{filename}` | One retained evidence image. |
+| `GET` | `/inspections/{id}/report.pdf` | The PDF report. |
 | `GET` | `/review/{id}` | The review screen. |
 
 `POST /inspections` takes a multipart body with a `referentiel` field
@@ -97,6 +103,39 @@ carry `requires_review: true`. That flag is shown in the review screen so the
 auditor knows the finding is low-confidence, but it does not block dispatch:
 approving is the human act that resolves the doubt.
 
+## Auditor corrections
+
+Approving or rejecting is not the only thing an auditor can do: the analysis
+can be corrected outright.
+
+`PATCH /inspections/{id}/findings/{index}` accepts `observed_severity`,
+`observation`, `rule_id` and `assigned_role`. Everything derived from those
+values is recomputed — the rule title, the accountable role, the deadline, the
+recipients and the escalation. An `assigned_role` set by hand overrides the
+catalog.
+
+What the analysis originally reported is preserved: the first override stores
+`original_severity` and `original_observation`, and the finding is flagged
+`edited_by_human`. The correction is therefore always auditable, in the review
+screen and in the PDF alike.
+
+`POST /inspections/{id}/findings` adds a finding the analysis missed, from
+`rule_id`, `observation` and `observed_severity`. Manual findings carry
+`source: "human"` — everything else carries `source: "ai"` — and are assigned
+and scheduled by the same rules.
+
+## PDF report
+
+`GET /inspections/{id}/report.pdf` renders the French report with reportlab:
+header (referential, capture time, edition date, counts by severity, stop-work
+banner when one applies), then one section per finding with its evidence image
+embedded, the rule title, observation, severity, justification, ISO clause,
+assignee, deadline, and whether it was detected by the analysis, corrected by
+the auditor, or added by them. The footer carries *Analyse assistée par IA,
+validée par un auditeur.*
+
+The same PDF is attached to every dispatch email.
+
 ## Human validation
 
 Every finding carries `validation_status`, `pending` until a human decides.
@@ -130,6 +169,19 @@ response reports one `EmailOutcome` per email attempted.
   a partial failure retries only what failed.
 - Approved findings with no recipient are reported in `unassigned` rather than
   silently dropped.
+
+Each email opens with a short paragraph addressed to the recipient's role,
+stating what they must do and by when. Urgency is settled in the first two
+lines — an immediate-stop email says the work must stop now and that no delay
+applies; a digest states the soonest deadline in plain words ("aujourd'hui",
+"demain", "sous 7 jours") and says explicitly that nothing requires stopping
+work. The evidence image is embedded in the body, and the PDF report is
+attached.
+
+`POST /inspections/{id}/dispatch` accepts an optional body `{"cc": [...]}`.
+Those addresses are copied on every email of that dispatch; the format is
+validated server-side and in the review screen, and a recipient is never copied
+on their own message.
 
 Everything the model wrote is HTML-escaped before it reaches an email body.
 
@@ -175,13 +227,32 @@ Uploads are analyzed outside the request cycle, so the client gets its
 - A failing job records `status: failed` and the error message. It never
   propagates, so a bad analysis cannot take the server down.
 
-### Media retention
+### Media retention and evidence
 
-Uploaded media is written under `data/uploads/{inspection_id}/` and deleted
-by `storage.delete_media()` in the job's `finally` block — so it is removed
-whether the analysis succeeds or fails. Only the result is kept. Client
-filenames are never reused on disk: each file is stored under a generated
-name with a suffix derived from its validated media type.
+Uploaded media is written under `data/uploads/{inspection_id}/` and deleted by
+`storage.delete_media()` in the job's `finally` block — so it is removed
+whether the analysis succeeds or fails. Client filenames are never reused on
+disk: each file is stored under a generated name with a suffix derived from its
+validated media type.
+
+What survives is the **evidence**, under `data/evidence/{inspection_id}/`:
+
+- **Video**: one still is extracted at each finding's `timestamp_sec`, and the
+  video is deleted. Two findings at the same second share one frame.
+- **Images**: the image a finding came from is kept, downscaled. The model
+  reports which image it observed as the 0-based index in `timestamp_sec`; an
+  index outside the batch falls back to the first image.
+
+Each finding carries `evidence_image`, served by
+`GET /inspections/{id}/evidence/{filename}`. File names are validated against a
+strict pattern and resolved inside the inspection's own directory, so nothing
+outside it can be reached.
+
+`captured_at` is the moment the media was shot, read from EXIF
+`DateTimeOriginal` on images and the container creation time on video — the
+earliest one found. **It is never inferred**: media without that metadata
+leaves it `null`, and the review screen and report say so rather than
+substituting a plausible date.
 
 ## Run locally
 
@@ -227,6 +298,8 @@ Settings are read from the environment and from `.env` (see `.env.example`).
 | `UPLOAD_DIR` | `data/uploads` | Where media is held during analysis. |
 | `MAX_UPLOAD_BYTES` | `209715200` | Per-file size limit (200 MB). |
 | `MAX_IMAGES` | `10` | Images accepted per inspection. |
+| `EVIDENCE_DIR` | `data/evidence` | Where retained evidence images live. |
+| `EVIDENCE_MAX_PIXELS` | `1280` | Longest edge of a stored evidence image. |
 | `ANALYSIS_ENGINE_API_KEY` | *(empty)* | Provider credentials. Required to analyze. |
 | `ANALYSIS_ENGINE_MODEL` | *(empty)* | Model identifier. Empty uses the provider default. |
 | `ANALYSIS_ENGINE_TIMEOUT_SECONDS` | `120` | Per-request timeout. |

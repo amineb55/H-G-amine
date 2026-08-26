@@ -4,12 +4,16 @@ import uuid
 from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from app.config import get_settings
 from app.models.schemas import (
+    DispatchRequest,
     DispatchResponse,
     DispatchStatus,
+    FindingEdit,
+    FindingSource,
+    ManualFinding,
     EnrichedInspectionResult,
     InspectionAccepted,
     InspectionState,
@@ -18,7 +22,16 @@ from app.models.schemas import (
     ReviewResponse,
     ValidationStatus,
 )
-from app.services import assignment, inspection_store, job_queue, notification, storage
+from app.services import (
+    assignment,
+    inspection_prompt,
+    evidence,
+    inspection_store,
+    job_queue,
+    notification,
+    report,
+    storage,
+)
 from app.services.inspection_job import run_inspection
 
 REVIEW_PAGE = Path(__file__).resolve().parent.parent / "templates" / "review.html"
@@ -218,7 +231,9 @@ async def reject_finding(inspection_id: str, index: int) -> ReviewResponse:
 
 
 @app.post("/inspections/{inspection_id}/dispatch", response_model=DispatchResponse)
-async def dispatch_inspection(inspection_id: str) -> DispatchResponse:
+async def dispatch_inspection(
+    inspection_id: str, options: DispatchRequest | None = None
+) -> DispatchResponse:
     """Notify the people accountable for the approved findings.
 
     One email per recipient rather than one per finding, with immediate-stop
@@ -242,7 +257,7 @@ async def dispatch_inspection(inspection_id: str) -> DispatchResponse:
         elif not finding.notify_emails:
             unassigned.append(index)
 
-    outcomes = await notification.dispatch(result)
+    outcomes = await notification.dispatch(result, cc=(options.cc if options else []))
 
     # Persist whatever happened, successes and failures alike.
     inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
@@ -273,3 +288,129 @@ async def review_page(inspection_id: str) -> FileResponse:
             status_code=status.HTTP_404_NOT_FOUND, detail="Review page not available."
         )
     return FileResponse(REVIEW_PAGE, media_type="text/html")
+
+
+@app.get("/inspections/{inspection_id}/evidence/{filename}", include_in_schema=False)
+async def read_evidence(inspection_id: str, filename: str) -> FileResponse:
+    """Serve one retained evidence image."""
+    if inspection_store.get(inspection_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Unknown inspection."
+        )
+    try:
+        path = evidence.evidence_path(inspection_id, filename)
+    except evidence.EvidenceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid evidence file name."
+        ) from exc
+    if not path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="No such evidence image."
+        )
+    return FileResponse(path, media_type="image/jpeg")
+
+
+@app.patch("/inspections/{inspection_id}/findings/{index}", response_model=ReviewResponse)
+async def edit_finding(inspection_id: str, index: int, edit: FindingEdit) -> ReviewResponse:
+    """Apply an auditor's correction to a finding.
+
+    What the analysis originally reported is kept alongside the correction, so
+    the change stays auditable, and everything derived from the edited values
+    is recomputed.
+    """
+    record, result = _load_result(inspection_id)
+    result = _require_finding(result, index)
+    finding = result.findings[index]
+
+    changes = edit.model_dump(exclude_unset=True, exclude_none=True)
+    if not changes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Nothing to change."
+        )
+
+    if "assigned_role" in changes and changes["assigned_role"] not in assignment.known_roles():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown role '{changes['assigned_role']}'.",
+        )
+
+    # Keep the analysis's own words the first time an auditor overrides them.
+    if "observed_severity" in changes and finding.original_severity is None:
+        finding.original_severity = finding.observed_severity
+    if "observation" in changes and finding.original_observation is None:
+        finding.original_observation = finding.observation
+
+    for field, value in changes.items():
+        setattr(finding, field, value)
+    if finding.source is not FindingSource.HUMAN:
+        finding.edited_by_human = True
+
+    assignment.recompute(finding, result.referentiel)
+    result.findings = assignment.sort_findings(result.findings)
+    inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
+
+    return ReviewResponse(
+        inspection_id=inspection_id, status=record["status"], result=result,
+        summary=assignment.summarize(result), error=record.get("error"),
+    )
+
+
+@app.post(
+    "/inspections/{inspection_id}/findings",
+    response_model=ReviewResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_finding(inspection_id: str, manual: ManualFinding) -> ReviewResponse:
+    """Add a finding the analysis missed."""
+    record, result = _load_result(inspection_id)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This inspection has no result to add to yet.",
+        )
+
+    finding = assignment.build_manual_finding(
+        manual.rule_id, manual.observation, manual.observed_severity,
+        result.referentiel, timestamp_sec=manual.timestamp_sec,
+    )
+    result.findings = assignment.sort_findings([*result.findings, finding])
+    inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
+
+    return ReviewResponse(
+        inspection_id=inspection_id, status=record["status"], result=result,
+        summary=assignment.summarize(result), error=record.get("error"),
+    )
+
+
+@app.get("/inspections/{inspection_id}/report.pdf", include_in_schema=False)
+async def read_report(inspection_id: str) -> Response:
+    """Generate the inspection's PDF report."""
+    _, result = _load_result(inspection_id)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This inspection has no result to report on yet.",
+        )
+    pdf = report.build_pdf(result)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "content-disposition": f'inline; filename="{report.report_filename(result)}"'
+        },
+    )
+
+
+@app.get("/referentiels/{referentiel}/options", include_in_schema=False)
+async def read_options(referentiel: Referentiel) -> dict:
+    """Rules and roles the review screen offers when editing a finding."""
+    catalog = inspection_prompt.load_catalog(referentiel.value)
+    return {
+        "rules": [
+            {"id": rule.id, "title": rule.title, "default_severity": rule.default_severity.value}
+            for rule in catalog.rules
+        ],
+        "roles": [
+            {"key": key, "name": name} for key, name in assignment.known_roles().items()
+        ],
+    }

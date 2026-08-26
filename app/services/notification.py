@@ -9,10 +9,14 @@ This module holds no provider-specific code; it calls the notifier interface.
 """
 
 import logging
+from base64 import b64encode
+from datetime import date
 from html import escape
+from pathlib import Path
 
 from app.models.schemas import (
     DispatchStatus,
+    FindingSource,
     EmailKind,
     EmailOutcome,
     EnrichedFinding,
@@ -20,12 +24,16 @@ from app.models.schemas import (
     Severity,
     ValidationStatus,
 )
+from app.services import evidence, report
 from app.services.notifiers.email_notifier import NotificationError
 from app.services.notifiers.email_notifier import send as send_email
 
 logger = logging.getLogger(__name__)
 
 IMMEDIATE_SUBJECT_PREFIX = "[ARRET IMMEDIAT]"
+
+# Evidence larger than this is left to the attached report rather than inlined.
+MAX_INLINE_IMAGE_BYTES = 2 * 1024 * 1024
 
 SEVERITY_LABEL: dict[str, str] = {
     Severity.ARRET_IMMEDIAT.value: "Arrêt immédiat",
@@ -83,7 +91,64 @@ def build_subject(result: EnrichedInspectionResult, kind: EmailKind, count: int)
     return f"Inspection {result.inspection_id} — {count} {noun} à traiter"
 
 
-def _finding_block(finding: EnrichedFinding) -> str:
+def _inline_image(inspection_id: str, finding: EnrichedFinding) -> str:
+    """The finding's evidence image, embedded in the body itself."""
+    if not finding.evidence_image:
+        return ""
+    try:
+        path = evidence.evidence_path(inspection_id, finding.evidence_image)
+        if not path.is_file() or path.stat().st_size > MAX_INLINE_IMAGE_BYTES:
+            return ""
+        encoded = b64encode(path.read_bytes()).decode("ascii")
+    except Exception:  # noqa: BLE001 - a missing image must not stop the email
+        logger.warning("Could not inline evidence %s", finding.evidence_image, exc_info=True)
+        return ""
+    return (
+        f'<img src="data:image/jpeg;base64,{encoded}" alt="Image probante" '
+        f'style="width:100%;max-width:520px;border-radius:6px;'
+        f'border:1px solid #dfe3e8;margin-bottom:10px" />'
+    )
+
+
+def _deadline_phrase(findings: list[EnrichedFinding]) -> str:
+    """When the soonest correction is due, said plainly."""
+    soonest = min(finding.deadline_date for finding in findings)
+    today = date.today()
+    delta = (soonest - today).days
+    stamp = soonest.strftime("%d/%m/%Y")
+    if delta <= 0:
+        return f"aujourd'hui ({stamp})"
+    if delta == 1:
+        return f"demain ({stamp})"
+    return f"sous {delta} jours (au plus tard le {stamp})"
+
+
+def _opening(kind: EmailKind, findings: list[EnrichedFinding]) -> str:
+    """The first two lines: what this person must do, and by when.
+
+    The greeting above already names their role; this states the action and
+    the deadline in prose, rather than leaving them to a table further down.
+    """
+    count = len(findings)
+    noun = "constat" if count == 1 else "constats"
+
+    if kind is EmailKind.IMMEDIATE:
+        return (
+            f"Vous devez faire <b>cesser immédiatement</b> l'activité concernée par "
+            f"{'ce constat' if count == 1 else f'ces {count} constats'}. "
+            "Aucun délai n'est accordé : "
+            "l'action est attendue dès réception de ce message."
+            "<br/>La reprise ne peut intervenir qu'une fois la situation corrigée et vérifiée."
+        )
+    return (
+        f"{count} {noun} vous {'est attribué' if count == 1 else 'sont attribués'} "
+        f"à la suite de cette inspection. La correction est attendue "
+        f"<b>{_deadline_phrase(findings)}</b>."
+        "<br/>Aucun de ces constats n'impose l'arrêt de l'activité."
+    )
+
+
+def _finding_block(inspection_id: str, finding: EnrichedFinding) -> str:
     """Render one finding. Every dynamic value is escaped."""
     severity = finding.observed_severity.value
     colour = SEVERITY_COLOR.get(severity, "#5c6470")
@@ -98,6 +163,10 @@ def _finding_block(finding: EnrichedFinding) -> str:
     ]
     if finding.requires_review:
         rows.append(("Vigilance", "Confiance faible — approuvé par un valideur après vérification"))
+    if finding.source is FindingSource.HUMAN:
+        rows.append(("Origine", "Constat ajouté par l'auditeur"))
+    elif finding.edited_by_human:
+        rows.append(("Origine", "Détecté par l'analyse, corrigé par l'auditeur"))
 
     detail = "".join(
         f'<tr><td style="padding:3px 12px 3px 0;color:#5c6470;font-size:13px;'
@@ -112,6 +181,7 @@ def _finding_block(finding: EnrichedFinding) -> str:
         f'padding:14px 16px;margin-bottom:12px">'
         f'<div style="font-size:11px;font-weight:700;text-transform:uppercase;'
         f'letter-spacing:0.05em;color:{colour};margin-bottom:6px">{escape(label)}</div>'
+        f"{_inline_image(inspection_id, finding)}"
         f'<div style="font-size:15px;color:#1a1d21;margin-bottom:8px">'
         f"{escape(finding.observation)}</div>"
         f'<div style="font-size:13px;color:#5c6470;border-left:2px solid #dfe3e8;'
@@ -133,6 +203,8 @@ def build_html(
     count = len(findings)
     noun = "constat" if count == 1 else "constats"
 
+    opening = _opening(kind, findings)
+
     if kind is EmailKind.IMMEDIATE:
         banner = (
             '<div style="background:#b3261e;color:#ffffff;padding:14px 16px;'
@@ -144,19 +216,10 @@ def build_html(
             f"{count} {noun} {'impose' if count == 1 else 'imposent'} "
             "l'arrêt immédiat des travaux concernés.</div></div>"
         )
-        lead = (
-            f"{count} {noun} {'relève' if count == 1 else 'relèvent'} d'un arrêt "
-            "immédiat de l'activité. Une action est attendue sans délai."
-        )
     else:
         banner = ""
-        lead = (
-            f"{count} {noun} vous {'est' if count == 1 else 'sont'} "
-            f"{'attribué' if count == 1 else 'attribués'} à la suite de "
-            "l'inspection ci-dessous."
-        )
 
-    blocks = "".join(_finding_block(finding) for finding in findings)
+    blocks = "".join(_finding_block(result.inspection_id, finding) for finding in findings)
 
     return (
         '<div style="font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\','
@@ -168,24 +231,39 @@ def build_html(
         f'<div style="font-size:13px;color:#5c6470;margin-bottom:16px">'
         f"Inspection {escape(result.inspection_id)} · {escape(result.scene_detected)}</div>"
         f"{banner}"
-        f'<p style="font-size:15px;margin:0 0 4px">{greeting}</p>'
-        f'<p style="font-size:15px;margin:0 0 18px;color:#5c6470">{lead}</p>'
+        f'<p style="font-size:15px;margin:0 0 8px">{greeting}</p>'
+        f'<p style="font-size:15px;margin:0 0 18px;line-height:1.5">{opening}</p>'
         f"{blocks}"
         '<p style="font-size:12px;color:#868e9a;border-top:1px solid #dfe3e8;'
         'padding-top:12px;margin-top:20px">'
         "Analyse assistée par IA, validée par un auditeur avant envoi. "
+        "Le rapport complet est joint à ce message en PDF. "
         "Répondez à ce message pour signaler une erreur.</p>"
         "</div></div>"
     )
 
 
-async def dispatch(result: EnrichedInspectionResult) -> list[EmailOutcome]:
+def _build_report(result: EnrichedInspectionResult) -> list[tuple[str, bytes]]:
+    """The PDF report, attached to every email of the dispatch."""
+    try:
+        return [(report.report_filename(result), report.build_pdf(result))]
+    except Exception:  # noqa: BLE001 - a failed report must not stop the emails
+        logger.exception("Could not build the report for %s", result.inspection_id)
+        return []
+
+
+async def dispatch(
+    result: EnrichedInspectionResult, cc: list[str] | None = None
+) -> list[EmailOutcome]:
     """Send one email per recipient and record the outcome on each finding.
 
-    Immediate-stop emails go out first. A failure is recorded against that
-    email's findings only: it never rolls back a send that already succeeded.
+    Immediate-stop emails go out first, every message carries the PDF report,
+    and any ``cc`` addresses are copied on all of them. A failure is recorded
+    against that email's findings only: it never rolls back a send that
+    already succeeded.
     """
     groups = group_by_recipient(result)
+    attachments = _build_report(result) if groups else []
     # Immediate-stop alerts first, then digests; stable order within each.
     ordered = sorted(groups.items(), key=lambda item: (item[0][1] is not EmailKind.IMMEDIATE, item[0][0]))
 
@@ -200,7 +278,9 @@ async def dispatch(result: EnrichedInspectionResult) -> list[EmailOutcome]:
         html = build_html(result, kind, findings, recipient_name)
 
         try:
-            message_id = await send_email(address, subject, html)
+            message_id = await send_email(
+                address, subject, html, attachments=attachments, cc=cc
+            )
         except NotificationError as exc:
             logger.warning("Email to %s failed: %s", address, exc)
             for finding in findings:
@@ -212,6 +292,7 @@ async def dispatch(result: EnrichedInspectionResult) -> list[EmailOutcome]:
                 EmailOutcome(
                     email=address, kind=kind, subject=subject,
                     status=DispatchStatus.FAILED, finding_indexes=indexes, error=str(exc),
+                    cc=list(cc or []),
                 )
             )
             continue
@@ -226,6 +307,7 @@ async def dispatch(result: EnrichedInspectionResult) -> list[EmailOutcome]:
                 EmailOutcome(
                     email=address, kind=kind, subject=subject,
                     status=DispatchStatus.FAILED, finding_indexes=indexes, error=message,
+                    cc=list(cc or []),
                 )
             )
             continue
@@ -238,6 +320,7 @@ async def dispatch(result: EnrichedInspectionResult) -> list[EmailOutcome]:
             EmailOutcome(
                 email=address, kind=kind, subject=subject,
                 status=DispatchStatus.SENT, finding_indexes=indexes, message_id=message_id,
+                cc=list(cc or []),
             )
         )
 

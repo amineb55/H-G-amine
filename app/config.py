@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     # Uploaded media is stored here until its analysis completes.
     upload_dir: str = "data/uploads"
 
+    # Evidence frames kept after the analysis; the source media is deleted.
+    evidence_dir: str = "data/evidence"
+    # Longest edge of a stored evidence image, in pixels.
+    evidence_max_pixels: int = 1280
+
     # Upload limits.
     max_upload_bytes: int = 200 * 1024 * 1024
     max_images: int = 10
