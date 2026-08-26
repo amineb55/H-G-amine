@@ -213,6 +213,64 @@ are approving.
 
 The screen is in French; the API responses and this README are in English.
 
+## Persistence
+
+Inspections are stored in a document database, one document per inspection in
+the `inspections` collection, keyed by `inspection_id`. An inspection —
+including its findings, their enrichment, and their validation and dispatch
+state — survives a restart or a redeploy.
+
+The client is synchronous, so every call runs in a worker thread and the event
+loop is never blocked. **The store functions are therefore `async`**: same
+names, same arguments, same return values as before, but callers `await` them.
+A synchronous function cannot offload work to a thread without blocking the
+caller, so keeping them synchronous would have defeated the purpose.
+
+Credentials come from the ambient environment (application default
+credentials) — there is no key file in the repository. The project id is read
+from `GOOGLE_CLOUD_PROJECT`, falling back to whatever the credentials name.
+
+Records are written through a normaliser that turns enums and dates into plain
+scalars, and read back through the pydantic models, so datetimes round-trip
+exactly.
+
+### When the store is unreachable
+
+The client is built on first use, never at import, and the application starts
+regardless. A startup probe reports the outcome in the logs:
+
+```
+INFO:     app.main - Inspection store: persistent, collection 'inspections'.
+ERROR:    app.main - Inspection store UNREACHABLE: ... The application is
+                     running, but every inspection request will fail until
+                     this is fixed.
+```
+
+Every store call is bounded by `STORE_TIMEOUT_SECONDS` and fails with a
+readable message rather than hanging — the client library retries internally
+and can outlive its own timeout, so the deadline is enforced at the call
+boundary. A worker thread cannot be interrupted, so a call that overruns is
+left to finish on its own; with an unreachable store those stragglers can
+delay process shutdown.
+
+### Local work without credentials
+
+Set `STORE_BACKEND=memory` to use the in-process dictionary instead. Startup
+says so explicitly:
+
+```
+WARNING:  app.main - Inspection store: IN MEMORY. Inspections are lost when
+                     this process stops.
+```
+
+### Evidence files are not persistent yet
+
+Evidence images still live on the local disk under `EVIDENCE_DIR`. On a
+platform with ephemeral instances, **an inspection's record will survive a
+redeploy but its evidence images will not**: the review screen and the PDF
+will show findings whose images 404. Moving evidence to object storage is the
+next deployment step.
+
 ## Processing model
 
 Uploads are analyzed outside the request cycle, so the client gets its
@@ -221,9 +279,8 @@ Uploads are analyzed outside the request cycle, so the client gets its
 - Jobs are dispatched through `app/services/job_queue.py`, which currently
   runs them in-process via FastAPI `BackgroundTasks`. Swapping in a real
   broker means replacing that module, not the endpoints.
-- Inspection state lives in `app/services/inspection_store.py`, an in-memory
-  dict behind `get` / `set` / `update`. It is lost on restart until a
-  database replaces it.
+- Inspection state lives in `app/services/inspection_store.py`, behind
+  `get` / `set` / `update`. See **Persistence** below.
 - A failing job records `status: failed` and the error message. It never
   propagates, so a bad analysis cannot take the server down.
 
@@ -300,6 +357,12 @@ Settings are read from the environment and from `.env` (see `.env.example`).
 | `MAX_IMAGES` | `10` | Images accepted per inspection. |
 | `EVIDENCE_DIR` | `data/evidence` | Where retained evidence images live. |
 | `EVIDENCE_MAX_PIXELS` | `1280` | Longest edge of a stored evidence image. |
+| `STORE_BACKEND` | `firestore` | `firestore` to persist, `memory` for local work. |
+| `STORE_COLLECTION` | `inspections` | Collection holding the inspections. |
+| `GOOGLE_CLOUD_PROJECT` | *(empty)* | Project id. Empty uses the credentials' own. |
+| `STORE_TIMEOUT_SECONDS` | `15` | Deadline on each store call. |
+| `STORE_PROBE_SECONDS` | `5` | Deadline on the startup probe. |
+| `LOG_LEVEL` | `INFO` | Application log level. |
 | `ANALYSIS_ENGINE_API_KEY` | *(empty)* | Provider credentials. Required to analyze. |
 | `ANALYSIS_ENGINE_MODEL` | *(empty)* | Model identifier. Empty uses the provider default. |
 | `ANALYSIS_ENGINE_TIMEOUT_SECONDS` | `120` | Per-request timeout. |

@@ -30,7 +30,7 @@ async def run_inspection(inspection_id: str, referentiel: str) -> None:
         except Exception:  # noqa: BLE001 - evidence is not worth failing over
             logger.exception("Could not build evidence for inspection %s", inspection_id)
 
-        inspection_store.update(
+        await inspection_store.update(
             inspection_id,
             status=InspectionStatus.DONE,
             result=enriched.model_dump(mode="json"),
@@ -38,7 +38,7 @@ async def run_inspection(inspection_id: str, referentiel: str) -> None:
         )
     except Exception as exc:  # noqa: BLE001 - the job must never propagate
         logger.exception("Analysis failed for inspection %s", inspection_id)
-        inspection_store.update(
+        await inspection_store.update(
             inspection_id,
             status=InspectionStatus.FAILED,
             result=None,

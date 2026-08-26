@@ -1,6 +1,8 @@
 """FastAPI application for the HSE inspection analysis service."""
 
+import logging
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile, status
@@ -38,7 +40,45 @@ REVIEW_PAGE = Path(__file__).resolve().parent.parent / "templates" / "review.htm
 
 settings = get_settings()
 
+# The server's own logging config leaves the root logger alone, so application
+# logs — the store's state, per-call token usage — would never be emitted.
+logging.basicConfig(
+    level=getattr(logging, settings.log_level.upper(), logging.INFO),
+    format="%(levelname)s:     %(name)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Report the state of the inspection store without blocking startup.
+
+    An unreachable store is a loud log line, not a crash: the application
+    still comes up and every request that needs the store says why it failed.
+    """
+    if inspection_store.backend() == inspection_store.MEMORY_BACKEND:
+        logger.warning(
+            "Inspection store: IN MEMORY. Inspections are lost when this process "
+            "stops. Set STORE_BACKEND=firestore to persist them."
+        )
+    else:
+        reason = await inspection_store.check()
+        if reason is None:
+            logger.info(
+                "Inspection store: persistent, collection '%s'.",
+                settings.store_collection,
+            )
+        else:
+            logger.error(
+                "Inspection store UNREACHABLE: %s. The application is running, "
+                "but every inspection request will fail until this is fixed.",
+                reason,
+            )
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title=settings.app_name,
     description="AI-assisted analysis of HSE inspection media.",
     version="0.2.0",
@@ -118,7 +158,7 @@ async def create_inspection(
         storage.delete_media(inspection_id)
         raise
 
-    inspection_store.set(
+    await inspection_store.set(
         inspection_id,
         {
             "status": InspectionStatus.PROCESSING,
@@ -140,7 +180,7 @@ async def create_inspection(
 @app.get("/inspections/{inspection_id}", response_model=InspectionState)
 async def read_inspection(inspection_id: str) -> InspectionState:
     """Return the current state of an inspection."""
-    record = inspection_store.get(inspection_id)
+    record = await inspection_store.get(inspection_id)
     if record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Unknown inspection."
@@ -150,9 +190,9 @@ async def read_inspection(inspection_id: str) -> InspectionState:
     )
 
 
-def _load_result(inspection_id: str) -> tuple[dict, EnrichedInspectionResult | None]:
+async def _load_result(inspection_id: str) -> tuple[dict, EnrichedInspectionResult | None]:
     """Return an inspection record and its parsed result."""
-    record = inspection_store.get(inspection_id)
+    record = await inspection_store.get(inspection_id)
     if record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Unknown inspection."
@@ -179,11 +219,11 @@ def _require_finding(
     return result
 
 
-def _set_validation(
+async def _set_validation(
     inspection_id: str, index: int, validation_status: ValidationStatus
 ) -> ReviewResponse:
     """Record a human decision on one finding."""
-    record, result = _load_result(inspection_id)
+    record, result = await _load_result(inspection_id)
     result = _require_finding(result, index)
 
     finding = result.findings[index]
@@ -195,7 +235,7 @@ def _set_validation(
             finding.dispatch_status = DispatchStatus.NOT_QUEUED
             finding.dispatch_error = None
 
-    inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
+    await inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
     return ReviewResponse(
         inspection_id=inspection_id,
         status=record["status"],
@@ -208,7 +248,7 @@ def _set_validation(
 @app.get("/inspections/{inspection_id}/review", response_model=ReviewResponse)
 async def review_inspection(inspection_id: str) -> ReviewResponse:
     """Return the enriched result and the counts the review screen needs."""
-    record, result = _load_result(inspection_id)
+    record, result = await _load_result(inspection_id)
     return ReviewResponse(
         inspection_id=inspection_id,
         status=record["status"],
@@ -221,13 +261,13 @@ async def review_inspection(inspection_id: str) -> ReviewResponse:
 @app.post("/inspections/{inspection_id}/findings/{index}/approve", response_model=ReviewResponse)
 async def approve_finding(inspection_id: str, index: int) -> ReviewResponse:
     """Approve one finding."""
-    return _set_validation(inspection_id, index, ValidationStatus.APPROVED)
+    return await _set_validation(inspection_id, index, ValidationStatus.APPROVED)
 
 
 @app.post("/inspections/{inspection_id}/findings/{index}/reject", response_model=ReviewResponse)
 async def reject_finding(inspection_id: str, index: int) -> ReviewResponse:
     """Reject one finding."""
-    return _set_validation(inspection_id, index, ValidationStatus.REJECTED)
+    return await _set_validation(inspection_id, index, ValidationStatus.REJECTED)
 
 
 @app.post("/inspections/{inspection_id}/dispatch", response_model=DispatchResponse)
@@ -240,7 +280,7 @@ async def dispatch_inspection(
     findings pulled into their own message sent first. A finding already sent
     is never sent again, and one failed email never undoes a successful one.
     """
-    _, result = _load_result(inspection_id)
+    _, result = await _load_result(inspection_id)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -260,7 +300,7 @@ async def dispatch_inspection(
     outcomes = await notification.dispatch(result, cc=(options.cc if options else []))
 
     # Persist whatever happened, successes and failures alike.
-    inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
+    await inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
 
     notified = {i for outcome in outcomes if outcome.status is DispatchStatus.SENT
                 for i in outcome.finding_indexes}
@@ -293,7 +333,7 @@ async def review_page(inspection_id: str) -> FileResponse:
 @app.get("/inspections/{inspection_id}/evidence/{filename}", include_in_schema=False)
 async def read_evidence(inspection_id: str, filename: str) -> FileResponse:
     """Serve one retained evidence image."""
-    if inspection_store.get(inspection_id) is None:
+    if await inspection_store.get(inspection_id) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Unknown inspection."
         )
@@ -318,7 +358,7 @@ async def edit_finding(inspection_id: str, index: int, edit: FindingEdit) -> Rev
     the change stays auditable, and everything derived from the edited values
     is recomputed.
     """
-    record, result = _load_result(inspection_id)
+    record, result = await _load_result(inspection_id)
     result = _require_finding(result, index)
     finding = result.findings[index]
 
@@ -347,7 +387,7 @@ async def edit_finding(inspection_id: str, index: int, edit: FindingEdit) -> Rev
 
     assignment.recompute(finding, result.referentiel)
     result.findings = assignment.sort_findings(result.findings)
-    inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
+    await inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
 
     return ReviewResponse(
         inspection_id=inspection_id, status=record["status"], result=result,
@@ -362,7 +402,7 @@ async def edit_finding(inspection_id: str, index: int, edit: FindingEdit) -> Rev
 )
 async def add_finding(inspection_id: str, manual: ManualFinding) -> ReviewResponse:
     """Add a finding the analysis missed."""
-    record, result = _load_result(inspection_id)
+    record, result = await _load_result(inspection_id)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -374,7 +414,7 @@ async def add_finding(inspection_id: str, manual: ManualFinding) -> ReviewRespon
         result.referentiel, timestamp_sec=manual.timestamp_sec,
     )
     result.findings = assignment.sort_findings([*result.findings, finding])
-    inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
+    await inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
 
     return ReviewResponse(
         inspection_id=inspection_id, status=record["status"], result=result,
@@ -385,7 +425,7 @@ async def add_finding(inspection_id: str, manual: ManualFinding) -> ReviewRespon
 @app.get("/inspections/{inspection_id}/report.pdf", include_in_schema=False)
 async def read_report(inspection_id: str) -> Response:
     """Generate the inspection's PDF report."""
-    _, result = _load_result(inspection_id)
+    _, result = await _load_result(inspection_id)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

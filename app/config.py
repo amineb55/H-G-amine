@@ -19,11 +19,22 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = False
 
+    log_level: str = "INFO"
+
     host: str = "127.0.0.1"
     port: int = 8000
 
     # Uploaded media is stored here until its analysis completes.
     upload_dir: str = "data/uploads"
+
+    # Where inspections are stored: "firestore" (default) or "memory".
+    store_backend: str = "firestore"
+    store_collection: str = "inspections"
+    # Per-operation deadline, and the shorter one used by the startup probe.
+    store_timeout_seconds: float = 15.0
+    store_probe_seconds: float = 5.0
+    # Empty falls back to the project the ambient credentials name.
+    store_project_id: str = Field("", validation_alias="GOOGLE_CLOUD_PROJECT")
 
     # Evidence frames kept after the analysis; the source media is deleted.
     evidence_dir: str = "data/evidence"
