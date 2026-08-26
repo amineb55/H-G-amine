@@ -1,0 +1,15 @@
+# Rule catalog for office ("bureaux") inspections.
+# Example content: replace with the real catalog.
+referentiel: bureaux
+rules:
+  - id: BUR-001
+    title: Issues de secours et voies d'evacuation degagees
+    default_severity: majeur
+    deadline_days: 7
+    iso_45001_clause: "8.2"
+
+  - id: BUR-002
+    title: Poste de travail sur ecran conforme (siege reglable, ecran a hauteur des yeux)
+    default_severity: mineur
+    deadline_days: 30
+    iso_45001_clause: "8.1.2"

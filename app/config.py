@@ -28,9 +28,14 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 200 * 1024 * 1024
     max_images: int = 10
 
-    # Credentials for the analysis engine provider, injected at deploy time.
+    # Analysis engine provider. The model identifier is left empty here so the
+    # provider's own default applies; set ANALYSIS_ENGINE_MODEL to override it.
     analysis_engine_api_key: str = ""
     analysis_engine_model: str = ""
+    analysis_engine_timeout_seconds: int = 120
+
+    # Frames sampled per second of video. Lower means cheaper.
+    analysis_engine_video_fps: float = 1.0
 
 
 @lru_cache

@@ -2,8 +2,7 @@
 
 FastAPI service for AI-assisted analysis of HSE inspection media. Media is
 uploaded, analyzed in the background, and deleted as soon as the analysis
-ends — only the result is retained. The analysis engine is still a stub that
-returns an empty result.
+ends — only the result is retained.
 
 ## Requirements
 
@@ -16,11 +15,15 @@ app/
   main.py                       FastAPI app and endpoints
   config.py                     settings loaded from .env
   models/schemas.py             Finding / InspectionResult schemas
-  services/analysis_engine.py   analysis engine interface (stub)
+  services/analysis_engine.py   analysis engine interface
+  services/providers/           provider implementation behind that interface
+  services/inspection_prompt.py rule catalogs and system prompt assembly
   services/storage.py           media storage (local filesystem)
   services/inspection_store.py  inspection state (in-memory)
   services/job_queue.py         job dispatch interface
   services/inspection_job.py    the background analysis job
+rules/                          one rule catalog per referential (YAML)
+prompts/inspection.txt          system prompt template
 templates/                      reserved for later
 requirements.txt
 .env.example
@@ -118,6 +121,10 @@ Settings are read from the environment and from `.env` (see `.env.example`).
 | `UPLOAD_DIR` | `data/uploads` | Where media is held during analysis. |
 | `MAX_UPLOAD_BYTES` | `209715200` | Per-file size limit (200 MB). |
 | `MAX_IMAGES` | `10` | Images accepted per inspection. |
+| `ANALYSIS_ENGINE_API_KEY` | *(empty)* | Provider credentials. Required to analyze. |
+| `ANALYSIS_ENGINE_MODEL` | *(empty)* | Model identifier. Empty uses the provider default. |
+| `ANALYSIS_ENGINE_TIMEOUT_SECONDS` | `120` | Per-request timeout. |
+| `ANALYSIS_ENGINE_VIDEO_FPS` | `1.0` | Frames sampled per second of video. |
 
 ## Analysis engine
 
@@ -127,9 +134,63 @@ Settings are read from the environment and from `.env` (see `.env.example`).
 async def analyze(media_path: str, referentiel: str) -> dict
 ```
 
-It currently returns a hardcoded empty result. The provider implementation is
-injected behind this interface later, so nothing outside this module needs to
-change when it lands.
+`media_path` is the directory holding one inspection's media — one video or a
+batch of images. The engine delegates to the provider in
+`app/services/providers/`, which is the **only** module allowed to import the
+provider SDK: the model identifier, the SDK types and its error classes all
+stop there. The import is lazy, so the rest of the application starts and runs
+without the SDK installed.
+
+Swapping providers means writing a new module in `providers/` and changing the
+delegation in `analysis_engine.py`. Nothing else in the codebase refers to a
+provider.
+
+Failures never surface as stack traces. Each cause gets its own message,
+stored on the inspection and returned by `GET /inspections/{id}`:
+
+| Cause | Message stored |
+| --- | --- |
+| No API key configured | The analysis engine is not configured: no API key is set. |
+| Rate limited | The analysis engine is rate limited. Retry this inspection later. |
+| Bad credentials | The analysis engine rejected the configured credentials. |
+| Timeout | The analysis engine did not respond in time. |
+| Provider unavailable | The analysis engine is temporarily unavailable. Retry this inspection later. |
+| Unusable response, twice | The analysis engine returned a result in an unexpected format, twice in a row. |
+
+Token usage is logged at INFO on every call, so cost can be tracked:
+
+```
+Analysis call: model=... attempt=1 prompt_tokens=1200 output_tokens=300 thoughts_tokens=50 total_tokens=1550
+```
+
+### Rule catalogs
+
+`app/rules/<referentiel>.yaml` holds the rules audited for each referential —
+`bureaux.yaml` and `btp.yaml`. Each rule carries `id`, `title`,
+`default_severity`, `deadline_days` and `iso_45001_clause`. The files ship with
+two example rules each; replace their contents with the real catalogs. The
+structure is validated on load, and an unknown referential, a malformed file or
+a duplicate rule id fails the inspection with a readable message.
+
+### System prompt
+
+`app/prompts/inspection.txt` is the prompt template, editable without touching
+code. Two placeholders are substituted at run time: `{{REFERENTIEL}}` and
+`{{RULES}}`, the latter being the loaded catalog. The prompt instructs the model
+to audit only against that catalog, to check the scene matches the referential
+(otherwise `scene_valid: false` and no findings), to report only what is
+visibly observable, to mark anything below 0.7 confidence as `a_verifier`, to
+refer to people by role and location and never identify them, and to justify
+any severity it raises or lowers relative to the rule default.
+
+### Response handling
+
+Structured JSON output is requested from the model and validated with pydantic.
+An unparseable or non-conforming response triggers **one** retry carrying the
+validation error as a corrective instruction; a second failure fails the
+inspection. Unvalidated data is never returned. Video is sampled at one frame
+per second (`ANALYSIS_ENGINE_VIDEO_FPS`) to bound the cost of a long clip, and
+the provider deletes its own copy of the media once the call is over.
 
 ## Schema
 
