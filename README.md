@@ -18,13 +18,14 @@ app/
   services/analysis_engine.py   analysis engine interface
   services/providers/           provider implementation behind that interface
   services/inspection_prompt.py rule catalogs and system prompt assembly
+  services/assignment.py        assignment, deadlines and review summary
   services/storage.py           media storage (local filesystem)
   services/inspection_store.py  inspection state (in-memory)
   services/job_queue.py         job dispatch interface
   services/inspection_job.py    the background analysis job
-rules/                          one rule catalog per referential (YAML)
+rules/                          rule catalogs and assignment catalog (YAML)
 prompts/inspection.txt          system prompt template
-templates/                      reserved for later
+templates/review.html           the review screen
 requirements.txt
 .env.example
 ```
@@ -36,6 +37,11 @@ requirements.txt
 | `GET` | `/health` | Liveness probe. |
 | `POST` | `/inspections` | Upload media and queue an analysis. Returns `202`. |
 | `GET` | `/inspections/{id}` | Current status and result. |
+| `GET` | `/inspections/{id}/review` | Enriched result plus review counts. |
+| `POST` | `/inspections/{id}/findings/{index}/approve` | Approve one finding. |
+| `POST` | `/inspections/{id}/findings/{index}/reject` | Reject one finding. |
+| `POST` | `/inspections/{id}/dispatch` | Queue approved findings. Sends nothing yet. |
+| `GET` | `/review/{id}` | The review screen. |
 
 `POST /inspections` takes a multipart body with a `referentiel` field
 (`bureaux` or `btp`) and a `files` field holding **either one video or up to
@@ -54,6 +60,60 @@ and `image/png`, each capped at 200 MB.
 `result` (the `InspectionResult` once done, otherwise `null`) and `error`
 (the reason when the analysis failed, otherwise `null`). Unknown ids give
 `404`.
+
+## Assignment and deadlines
+
+Once the analysis returns, every finding is enriched by
+`app/services/assignment.py` before it is stored.
+
+**Who is accountable** comes from `app/rules/responsables.yaml`: a table of
+roles, a rule-to-role assignment per rule id, and an escalation rule. It is
+validated on load — an assignment pointing at an unknown role, an escalation
+target that does not exist or a malformed address all fail loudly rather than
+silently dropping a recipient. A rule with no entry in the catalog leaves the
+finding unassigned and is logged.
+
+**Deadlines** are computed from the severity actually observed, not the rule
+default:
+
+| Observed severity | Deadline |
+| --- | --- |
+| `arret_immediat` | today, `immediate: true` |
+| `critique` | +1 day |
+| `majeur` | +7 days |
+| `mineur` | +30 days |
+
+The rule's own `deadline_days` is the fallback if a severity outside that grid
+ever reaches the enrichment.
+
+**Who is notified** is the assigned role, plus the escalation role when the
+severity is `arret_immediat`. Addresses are de-duplicated, so roles sharing a
+mailbox are notified once.
+
+Findings whose analysis status is `a_verifier` are enriched like any other but
+carry `requires_review: true`, and dispatch holds them back even when a
+reviewer approves them.
+
+## Human validation
+
+Every finding carries `validation_status`, `pending` until a human decides.
+`POST .../approve` and `POST .../reject` record that decision; rejecting a
+finding that was already queued removes it from the queue.
+
+`POST /inspections/{id}/dispatch` marks approved findings `ready_to_send` and
+returns them with their recipients and deadlines. **It sends nothing** — the
+response always carries `sent: false`, and findings held back for confirmation
+are listed separately in `skipped_requires_review`.
+
+### Review screen
+
+`GET /review/{id}` serves `templates/review.html`: plain HTML and vanilla JS,
+no framework and no build step. It loads its data from the review endpoint and
+shows, per finding, the timestamp, rule title, observation, observed severity
+in colour, the severity justification, confidence, ISO 45001 clause, the
+accountable person and the deadline. Findings are ordered most serious first,
+`arret_immediat` ones carry an explicit "activity must stop" banner, and the
+header counts findings by severity and by review state.
 
 ## Processing model
 

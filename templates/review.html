@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inspection review</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --border: #dfe3e8;
+    --ink: #1a1d21;
+    --ink-soft: #5c6470;
+    --ink-faint: #868e9a;
+    --arret: #b3261e;
+    --arret-bg: #fdecea;
+    --critique: #c2410c;
+    --critique-bg: #fdf0e7;
+    --majeur: #a16207;
+    --majeur-bg: #fbf4e3;
+    --mineur: #0f6f8f;
+    --mineur-bg: #e9f3f7;
+    --ok: #0f7b46;
+    --ok-bg: #e7f4ed;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 28px 20px 72px; }
+
+  header.page { margin-bottom: 20px; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .meta { color: var(--ink-soft); font-size: 13px; }
+  .meta code { background: #eceef1; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .disclaimer {
+    margin-top: 12px; padding: 9px 12px; border-radius: var(--radius);
+    background: #eef1f4; border: 1px solid var(--border);
+    color: var(--ink-soft); font-size: 13px;
+  }
+
+  .stop-banner {
+    display: none;
+    margin: 18px 0; padding: 14px 16px; border-radius: var(--radius);
+    background: var(--arret); color: #fff;
+    font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+    box-shadow: 0 1px 3px rgba(179, 38, 30, 0.35);
+  }
+  .stop-banner small {
+    display: block; margin-top: 4px;
+    font-weight: 500; text-transform: none; letter-spacing: 0; opacity: 0.92;
+  }
+
+  .summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 22px; }
+  .chip {
+    display: inline-flex; align-items: baseline; gap: 6px;
+    padding: 6px 11px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--surface);
+    font-size: 13px; color: var(--ink-soft);
+  }
+  .chip b { font-size: 14px; color: var(--ink); }
+  .chip.arret { background: var(--arret-bg); border-color: #f3c6c2; color: var(--arret); }
+  .chip.arret b { color: var(--arret); }
+  .chip.critique { background: var(--critique-bg); border-color: #f3d3bd; color: var(--critique); }
+  .chip.critique b { color: var(--critique); }
+  .chip.majeur { background: var(--majeur-bg); border-color: #ecdcae; color: var(--majeur); }
+  .chip.majeur b { color: var(--majeur); }
+  .chip.mineur { background: var(--mineur-bg); border-color: #c4dfe9; color: var(--mineur); }
+  .chip.mineur b { color: var(--mineur); }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 4px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px;
+  }
+  .card.arret { border-left-color: var(--arret); }
+  .card.critique { border-left-color: var(--critique); }
+  .card.majeur { border-left-color: var(--majeur); }
+  .card.mineur { border-left-color: var(--mineur); }
+  .card.rejected { opacity: 0.55; }
+
+  .card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .rule-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--ink-faint); }
+  .sev {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 3px 8px; border-radius: 4px;
+  }
+  .sev.arret { background: var(--arret); color: #fff; }
+  .sev.critique { background: var(--critique); color: #fff; }
+  .sev.majeur { background: var(--majeur); color: #fff; }
+  .sev.mineur { background: var(--mineur); color: #fff; }
+  .badge {
+    font-size: 11px; padding: 3px 8px; border-radius: 4px;
+    border: 1px solid var(--border); color: var(--ink-soft); background: #f7f8f9;
+  }
+  .badge.review { background: var(--majeur-bg); border-color: #ecdcae; color: var(--majeur); }
+  .badge.approved { background: var(--ok-bg); border-color: #bfe0cd; color: var(--ok); }
+  .badge.rejected { background: #f1f2f4; }
+  .badge.queued { background: var(--ok-bg); border-color: #bfe0cd; color: var(--ok); }
+  .spacer { flex: 1; }
+  .ts { font-size: 12px; color: var(--ink-faint); }
+
+  .title { font-weight: 600; margin-bottom: 6px; }
+  .observation { margin-bottom: 10px; }
+  .reason {
+    font-size: 13px; color: var(--ink-soft);
+    border-left: 2px solid var(--border); padding-left: 10px; margin-bottom: 12px;
+  }
+
+  dl.facts {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px 16px; margin: 0 0 14px; padding-top: 12px; border-top: 1px solid var(--border);
+  }
+  dl.facts div { min-width: 0; }
+  dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-faint); margin-bottom: 2px; }
+  dd { margin: 0; font-size: 13px; word-break: break-word; }
+  dd.due { font-weight: 600; }
+  dd.due.now { color: var(--arret); }
+
+  .actions { display: flex; gap: 8px; }
+  button {
+    font: inherit; font-size: 13px; padding: 7px 14px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface); color: var(--ink); cursor: pointer;
+  }
+  button:hover:not(:disabled) { background: #f0f2f4; }
+  button:disabled { cursor: default; opacity: 0.5; }
+  button.approve[aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: #fff; }
+  button.reject[aria-pressed="true"] { background: #5c6470; border-color: #5c6470; color: #fff; }
+
+  .dispatch-bar {
+    margin-top: 24px; padding: 16px 18px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  }
+  button.primary {
+    background: var(--ink); border-color: var(--ink); color: #fff;
+    font-weight: 600; padding: 9px 18px;
+  }
+  button.primary:hover:not(:disabled) { background: #33383f; }
+  .dispatch-note { font-size: 13px; color: var(--ink-soft); }
+
+  .notice { padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); }
+  .notice.error { background: var(--arret-bg); border-color: #f3c6c2; color: var(--arret); }
+  pre.result {
+    margin: 12px 0 0; padding: 12px; background: #f7f8f9; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 12px; overflow-x: auto; white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="page">
+    <h1>Inspection review</h1>
+    <div class="meta">
+      <code id="inspection-id"></code>
+      <span id="meta-rest"></span>
+    </div>
+    <div class="disclaimer">
+      AI-assisted analysis, human validation required. Nothing is sent until a
+      reviewer approves it.
+    </div>
+  </header>
+
+  <div class="stop-banner" id="stop-banner">
+    Activity must stop
+    <small id="stop-detail"></small>
+  </div>
+
+  <div class="summary" id="summary"></div>
+  <div id="findings"></div>
+  <div id="empty-state"></div>
+
+  <div class="dispatch-bar" id="dispatch-bar" hidden>
+    <button class="primary" id="dispatch-btn">Dispatch approved</button>
+    <span class="dispatch-note" id="dispatch-note"></span>
+  </div>
+  <pre class="result" id="dispatch-result" hidden></pre>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var SEVERITIES = ["arret_immediat", "critique", "majeur", "mineur"];
+  var SEVERITY_CLASS = {
+    arret_immediat: "arret", critique: "critique", majeur: "majeur", mineur: "mineur"
+  };
+  var SEVERITY_LABEL = {
+    arret_immediat: "Immediate stop", critique: "Critical",
+    majeur: "Major", mineur: "Minor"
+  };
+
+  var id = decodeURIComponent(window.location.pathname.split("/").pop());
+  var base = "/inspections/" + encodeURIComponent(id);
+  var state = null;
+
+  var el = {
+    id: document.getElementById("inspection-id"),
+    metaRest: document.getElementById("meta-rest"),
+    banner: document.getElementById("stop-banner"),
+    bannerDetail: document.getElementById("stop-detail"),
+    summary: document.getElementById("summary"),
+    findings: document.getElementById("findings"),
+    empty: document.getElementById("empty-state"),
+    bar: document.getElementById("dispatch-bar"),
+    dispatchBtn: document.getElementById("dispatch-btn"),
+    dispatchNote: document.getElementById("dispatch-note"),
+    dispatchResult: document.getElementById("dispatch-result")
+  };
+
+  function node(tag, className, text) {
+    var n = document.createElement(tag);
+    if (className) { n.className = className; }
+    if (text !== undefined && text !== null) { n.textContent = String(text); }
+    return n;
+  }
+
+  function fact(label, value, className) {
+    var box = node("div");
+    box.appendChild(node("dt", null, label));
+    box.appendChild(node("dd", className || null, value));
+    return box;
+  }
+
+  function request(url, options) {
+    return fetch(url, options).then(function (response) {
+      return response.json().then(function (body) {
+        if (!response.ok) {
+          throw new Error(body && body.detail ? body.detail : "Request failed");
+        }
+        return body;
+      });
+    });
+  }
+
+  function renderSummary(summary, result) {
+    el.summary.textContent = "";
+    el.summary.appendChild(chip(null, "Findings", summary.total));
+    SEVERITIES.forEach(function (severity) {
+      var count = (summary.by_severity || {})[severity] || 0;
+      if (count > 0) {
+        el.summary.appendChild(chip(SEVERITY_CLASS[severity], SEVERITY_LABEL[severity], count));
+      }
+    });
+    if (summary.requires_review > 0) {
+      el.summary.appendChild(chip(null, "To confirm", summary.requires_review));
+    }
+    el.summary.appendChild(chip(null, "Approved", summary.approved));
+    el.summary.appendChild(chip(null, "Rejected", summary.rejected));
+    el.summary.appendChild(chip(null, "Pending", summary.pending));
+
+    if (summary.has_immediate_stop) {
+      var stopping = result.findings.filter(function (f) { return f.immediate; }).length;
+      el.bannerDetail.textContent =
+        stopping + (stopping === 1 ? " finding requires" : " findings require") +
+        " work to stop immediately.";
+      el.banner.style.display = "block";
+    } else {
+      el.banner.style.display = "none";
+    }
+  }
+
+  function chip(className, label, value) {
+    var c = node("span", className ? "chip " + className : "chip");
+    c.appendChild(node("b", null, value));
+    c.appendChild(document.createTextNode(label));
+    return c;
+  }
+
+  function renderFinding(finding, index) {
+    var severityClass = SEVERITY_CLASS[finding.observed_severity] || "";
+    var card = node("div", "card " + severityClass);
+    if (finding.validation_status === "rejected") { card.classList.add("rejected"); }
+
+    var head = node("div", "card-head");
+    head.appendChild(node("span", "sev " + severityClass,
+      SEVERITY_LABEL[finding.observed_severity] || finding.observed_severity));
+    head.appendChild(node("span", "rule-id", finding.rule_id));
+    if (finding.requires_review) {
+      head.appendChild(node("span", "badge review", "To confirm"));
+    }
+    if (finding.validation_status !== "pending") {
+      head.appendChild(node("span", "badge " + finding.validation_status,
+        finding.validation_status === "approved" ? "Approved" : "Rejected"));
+    }
+    if (finding.dispatch_state === "ready_to_send") {
+      head.appendChild(node("span", "badge queued", "Ready to send"));
+    }
+    head.appendChild(node("span", "spacer"));
+    head.appendChild(node("span", "ts", "t+" + finding.timestamp_sec + "s"));
+    card.appendChild(head);
+
+    if (finding.rule_title) { card.appendChild(node("div", "title", finding.rule_title)); }
+    card.appendChild(node("div", "observation", finding.observation));
+    if (finding.severity_reason) {
+      card.appendChild(node("div", "reason", finding.severity_reason));
+    }
+
+    var facts = node("dl", "facts");
+    facts.appendChild(fact("Assigned to",
+      finding.assigned_name || "Unassigned"));
+    facts.appendChild(fact("Notified",
+      (finding.notify_emails || []).join(", ") || "Nobody"));
+    facts.appendChild(fact("Due",
+      finding.immediate ? finding.deadline_date + " — now" : finding.deadline_date,
+      finding.immediate ? "due now" : "due"));
+    facts.appendChild(fact("Confidence", Math.round(finding.confidence * 100) + "%"));
+    facts.appendChild(fact("ISO 45001", finding.iso_45001_clause));
+    facts.appendChild(fact("Status", finding.status === "nc" ? "Non-conformity" : "To verify"));
+    card.appendChild(facts);
+
+    var actions = node("div", "actions");
+    actions.appendChild(decisionButton("approve", "Approve", index, finding));
+    actions.appendChild(decisionButton("reject", "Reject", index, finding));
+    card.appendChild(actions);
+    return card;
+  }
+
+  function decisionButton(kind, label, index, finding) {
+    var button = node("button", kind, label);
+    var active = finding.validation_status === (kind === "approve" ? "approved" : "rejected");
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+    button.addEventListener("click", function () {
+      setBusy(true);
+      request(base + "/findings/" + index + "/" + kind, { method: "POST" })
+        .then(render)
+        .catch(showError)
+        .then(function () { setBusy(false); });
+    });
+    return button;
+  }
+
+  function setBusy(busy) {
+    var buttons = document.querySelectorAll("button");
+    for (var i = 0; i < buttons.length; i++) { buttons[i].disabled = busy; }
+  }
+
+  function showError(error) {
+    el.empty.textContent = "";
+    el.empty.appendChild(node("div", "notice error", error.message || String(error)));
+  }
+
+  function render(payload) {
+    state = payload;
+    el.id.textContent = payload.inspection_id;
+    el.findings.textContent = "";
+    el.empty.textContent = "";
+    el.dispatchResult.hidden = true;
+
+    var result = payload.result;
+    if (!result) {
+      el.metaRest.textContent = " · " + payload.status;
+      el.summary.textContent = "";
+      el.bar.hidden = true;
+      el.empty.appendChild(node("div", payload.error ? "notice error" : "notice",
+        payload.error || "The analysis is still running. Reload in a moment."));
+      return;
+    }
+
+    el.metaRest.textContent =
+      " · referential " + result.referentiel + " · " + result.scene_detected;
+    renderSummary(payload.summary, result);
+
+    if (!result.scene_valid) {
+      el.empty.appendChild(node("div", "notice",
+        "The scene does not match the '" + result.referentiel +
+        "' referential, so no finding was raised. Re-shoot the inspection or " +
+        "pick the right referential."));
+      el.bar.hidden = true;
+      return;
+    }
+    if (result.findings.length === 0) {
+      el.empty.appendChild(node("div", "notice", "No non-conformity was observed."));
+      el.bar.hidden = true;
+      return;
+    }
+
+    result.findings.forEach(function (finding, index) {
+      el.findings.appendChild(renderFinding(finding, index));
+    });
+
+    el.bar.hidden = false;
+    var ready = result.findings.filter(function (f) {
+      return f.validation_status === "approved" && !f.requires_review;
+    }).length;
+    var held = result.findings.filter(function (f) {
+      return f.validation_status === "approved" && f.requires_review;
+    }).length;
+    el.dispatchBtn.disabled = ready === 0;
+    el.dispatchNote.textContent =
+      ready + (ready === 1 ? " finding" : " findings") + " ready" +
+      (held > 0 ? ", " + held + " held back pending confirmation" : "") + ".";
+  }
+
+  el.dispatchBtn.addEventListener("click", function () {
+    setBusy(true);
+    request(base + "/dispatch", { method: "POST" })
+      .then(function (outcome) {
+        // Re-render first: render() clears the panel, so fill it afterwards.
+        return request(base + "/review").then(render).then(function () {
+          el.dispatchResult.hidden = false;
+          el.dispatchResult.textContent =
+            outcome.ready_to_send.length + " finding(s) marked ready to send" +
+            (outcome.skipped_requires_review.length
+              ? ", " + outcome.skipped_requires_review.length + " held back pending confirmation"
+              : "") +
+            ". Nothing has been sent yet.\n\n" +
+            JSON.stringify(outcome.ready_to_send, null, 2);
+        });
+      })
+      .catch(showError)
+      .then(function () { setBusy(false); });
+  });
+
+  request(base + "/review").then(render).catch(showError);
+}());
+</script>
+</body>
+</html>

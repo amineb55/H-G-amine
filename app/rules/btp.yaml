@@ -2,13 +2,13 @@
 # Example content: replace with the real catalog.
 referentiel: btp
 rules:
-  - id: BTP-001
+  - id: BTP-01
     title: Port des EPI obligatoires (casque, chaussures de securite, gilet haute visibilite)
     default_severity: critique
     deadline_days: 1
     iso_45001_clause: "8.1.2"
 
-  - id: BTP-002
+  - id: BTP-02
     title: Protection collective contre les chutes de hauteur (garde-corps, filets, tremies obturees)
     default_severity: arret_immediat
     deadline_days: 0

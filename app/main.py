@@ -1,18 +1,28 @@
 """FastAPI application for the HSE inspection analysis service."""
 
 import uuid
+from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 
 from app.config import get_settings
 from app.models.schemas import (
+    DispatchedFinding,
+    DispatchResponse,
+    DispatchState,
+    EnrichedInspectionResult,
     InspectionAccepted,
     InspectionState,
     InspectionStatus,
     Referentiel,
+    ReviewResponse,
+    ValidationStatus,
 )
-from app.services import inspection_store, job_queue, storage
+from app.services import assignment, inspection_store, job_queue, storage
 from app.services.inspection_job import run_inspection
+
+REVIEW_PAGE = Path(__file__).resolve().parent.parent / "templates" / "review.html"
 
 settings = get_settings()
 
@@ -126,3 +136,137 @@ async def read_inspection(inspection_id: str) -> InspectionState:
     return InspectionState(
         status=record["status"], result=record["result"], error=record["error"]
     )
+
+
+def _load_result(inspection_id: str) -> tuple[dict, EnrichedInspectionResult | None]:
+    """Return an inspection record and its parsed result."""
+    record = inspection_store.get(inspection_id)
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Unknown inspection."
+        )
+    raw = record.get("result")
+    result = EnrichedInspectionResult.model_validate(raw) if raw else None
+    return record, result
+
+
+def _require_finding(
+    result: EnrichedInspectionResult | None, index: int
+) -> EnrichedInspectionResult:
+    """Fail unless the result holds a finding at that index."""
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This inspection has no result to review yet.",
+        )
+    if not 0 <= index < len(result.findings):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"This inspection has no finding at index {index}.",
+        )
+    return result
+
+
+def _set_validation(
+    inspection_id: str, index: int, validation_status: ValidationStatus
+) -> ReviewResponse:
+    """Record a human decision on one finding."""
+    record, result = _load_result(inspection_id)
+    result = _require_finding(result, index)
+
+    finding = result.findings[index]
+    finding.validation_status = validation_status
+    if validation_status is not ValidationStatus.APPROVED:
+        # A finding that is no longer approved must not stay queued.
+        finding.dispatch_state = DispatchState.NOT_QUEUED
+
+    inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
+    return ReviewResponse(
+        inspection_id=inspection_id,
+        status=record["status"],
+        result=result,
+        summary=assignment.summarize(result),
+        error=record.get("error"),
+    )
+
+
+@app.get("/inspections/{inspection_id}/review", response_model=ReviewResponse)
+async def review_inspection(inspection_id: str) -> ReviewResponse:
+    """Return the enriched result and the counts the review screen needs."""
+    record, result = _load_result(inspection_id)
+    return ReviewResponse(
+        inspection_id=inspection_id,
+        status=record["status"],
+        result=result,
+        summary=assignment.summarize(result),
+        error=record.get("error"),
+    )
+
+
+@app.post("/inspections/{inspection_id}/findings/{index}/approve", response_model=ReviewResponse)
+async def approve_finding(inspection_id: str, index: int) -> ReviewResponse:
+    """Approve one finding."""
+    return _set_validation(inspection_id, index, ValidationStatus.APPROVED)
+
+
+@app.post("/inspections/{inspection_id}/findings/{index}/reject", response_model=ReviewResponse)
+async def reject_finding(inspection_id: str, index: int) -> ReviewResponse:
+    """Reject one finding."""
+    return _set_validation(inspection_id, index, ValidationStatus.REJECTED)
+
+
+@app.post("/inspections/{inspection_id}/dispatch", response_model=DispatchResponse)
+async def dispatch_inspection(inspection_id: str) -> DispatchResponse:
+    """Queue the approved findings for notification.
+
+    Nothing is sent yet: approved findings are marked ready to send and
+    returned. Findings still awaiting confirmation are held back.
+    """
+    _, result = _load_result(inspection_id)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This inspection has no result to dispatch yet.",
+        )
+
+    queued: list[DispatchedFinding] = []
+    held_back: list[int] = []
+
+    for index, finding in enumerate(result.findings):
+        if finding.validation_status is not ValidationStatus.APPROVED:
+            finding.dispatch_state = DispatchState.NOT_QUEUED
+            continue
+        if finding.requires_review:
+            finding.dispatch_state = DispatchState.NOT_QUEUED
+            held_back.append(index)
+            continue
+
+        finding.dispatch_state = DispatchState.READY_TO_SEND
+        queued.append(
+            DispatchedFinding(
+                index=index,
+                rule_id=finding.rule_id,
+                observed_severity=finding.observed_severity,
+                deadline_date=finding.deadline_date,
+                assigned_name=finding.assigned_name,
+                notify_emails=finding.notify_emails,
+            )
+        )
+
+    inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
+    return DispatchResponse(
+        inspection_id=inspection_id,
+        ready_to_send=queued,
+        skipped_requires_review=held_back,
+        sent=False,
+    )
+
+
+@app.get("/review/{inspection_id}", include_in_schema=False)
+async def review_page(inspection_id: str) -> FileResponse:
+    """Serve the review screen. It loads its data from the review endpoint."""
+    if not REVIEW_PAGE.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Review page not available."
+        )
+    return FileResponse(REVIEW_PAGE, media_type="text/html")

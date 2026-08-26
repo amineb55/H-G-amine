@@ -3,7 +3,7 @@
 import logging
 
 from app.models.schemas import InspectionResult, InspectionStatus
-from app.services import analysis_engine, inspection_store, storage
+from app.services import analysis_engine, assignment, inspection_store, storage
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +21,11 @@ async def run_inspection(inspection_id: str, referentiel: str) -> None:
         result = InspectionResult.model_validate(
             {**raw, "inspection_id": inspection_id, "referentiel": referentiel}
         )
+        enriched = assignment.enrich(result)
         inspection_store.update(
             inspection_id,
             status=InspectionStatus.DONE,
-            result=result.model_dump(mode="json"),
+            result=enriched.model_dump(mode="json"),
             error=None,
         )
     except Exception as exc:  # noqa: BLE001 - the job must never propagate

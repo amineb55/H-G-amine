@@ -1,0 +1,45 @@
+# Who is accountable for each rule, and who is notified on escalation.
+# Editable without touching code.
+
+roles:
+  maintenance:
+    email: amine@example.com
+    name: Responsable maintenance
+  travaux:
+    email: amine@example.com
+    name: Conducteur de travaux
+  hse:
+    email: amine@example.com
+    name: Responsable HSE
+  direction:
+    email: amine@example.com
+    name: Directeur de site
+
+assignments:
+  BUR-02: maintenance
+  BUR-03: maintenance
+  BUR-08: maintenance
+  BUR-05: maintenance
+  BUR-04: travaux
+  BUR-06: travaux
+  BUR-07: travaux
+  BUR-10: travaux
+  BUR-01: hse
+  BUR-09: hse
+  BUR-11: hse
+  BUR-12: hse
+  BTP-03: travaux
+  BTP-04: travaux
+  BTP-05: travaux
+  BTP-06: travaux
+  BTP-01: travaux
+  BTP-02: travaux
+  BTP-07: maintenance
+  BTP-08: travaux
+  BTP-09: maintenance
+  BTP-10: hse
+  BTP-11: hse
+  BTP-12: hse
+
+escalation:
+  arret_immediat_also_notifies: direction
