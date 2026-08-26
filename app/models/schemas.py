@@ -37,11 +37,12 @@ class ValidationStatus(str, Enum):
     REJECTED = "rejected"
 
 
-class DispatchState(str, Enum):
-    """Whether a finding is queued for notification."""
+class DispatchStatus(str, Enum):
+    """Where a finding stands in notification."""
 
     NOT_QUEUED = "not_queued"
-    READY_TO_SEND = "ready_to_send"
+    SENT = "sent"
+    FAILED = "failed"
 
 
 class InspectionStatus(str, Enum):
@@ -111,8 +112,14 @@ class EnrichedFinding(Finding):
     validation_status: ValidationStatus = Field(
         ValidationStatus.PENDING, description="Where the finding stands in human validation."
     )
-    dispatch_state: DispatchState = Field(
-        DispatchState.NOT_QUEUED, description="Whether the finding is queued for notification."
+    dispatch_status: DispatchStatus = Field(
+        DispatchStatus.NOT_QUEUED, description="Where the finding stands in notification."
+    )
+    message_id: str | None = Field(
+        None, description="Identifier of the email that carried this finding."
+    )
+    dispatch_error: str | None = Field(
+        None, description="Why the notification failed, when it did."
     )
 
 
@@ -158,29 +165,48 @@ class ReviewResponse(BaseModel):
     error: str | None = Field(None, description="Failure reason, when the analysis failed.")
 
 
-class DispatchedFinding(BaseModel):
-    """One finding queued for notification."""
+class EmailKind(str, Enum):
+    """Which of the two emails a recipient can be sent."""
 
-    index: int = Field(..., description="Position of the finding in the result.")
-    rule_id: str = Field(..., description="Identifier of the referential rule.")
-    observed_severity: Severity = Field(..., description="Severity retained for the finding.")
-    deadline_date: date = Field(..., description="Date the correction is due.")
-    assigned_name: str | None = Field(None, description="Label of the accountable role.")
-    notify_emails: list[str] = Field(default_factory=list, description="Everyone to notify.")
+    IMMEDIATE = "immediate"
+    DIGEST = "digest"
+
+
+class EmailOutcome(BaseModel):
+    """What happened to one email."""
+
+    email: str = Field(..., description="Address the email was addressed to.")
+    kind: EmailKind = Field(..., description="Immediate-stop alert, or the digest.")
+    subject: str = Field(..., description="Subject line used.")
+    status: DispatchStatus = Field(..., description="Whether the email went out.")
+    finding_indexes: list[int] = Field(
+        default_factory=list, description="Findings carried by this email."
+    )
+    message_id: str | None = Field(None, description="Identifier returned by the email service.")
+    error: str | None = Field(None, description="Why the email failed, when it did.")
 
 
 class DispatchResponse(BaseModel):
-    """Outcome of queueing the approved findings."""
+    """Outcome of notifying the approved findings."""
 
     inspection_id: str = Field(..., description="Identifier of the inspection.")
-    ready_to_send: list[DispatchedFinding] = Field(
-        default_factory=list, description="Findings queued for notification."
+    sent: bool = Field(False, description="Whether at least one email went out.")
+    emails: list[EmailOutcome] = Field(
+        default_factory=list, description="One entry per email attempted."
+    )
+    sent_count: int = Field(0, description="Emails that went out.")
+    failed_count: int = Field(0, description="Emails that failed.")
+    already_sent: list[int] = Field(
+        default_factory=list, description="Findings skipped because they were already sent."
     )
     approved_from_review: list[int] = Field(
         default_factory=list,
-        description="Queued findings that were flagged for review and approved anyway.",
+        description="Notified findings that were flagged for review and approved anyway.",
     )
-    sent: bool = Field(False, description="Whether anything was actually sent. Always false for now.")
+    unassigned: list[int] = Field(
+        default_factory=list,
+        description="Approved findings with no recipient, so nothing could be sent.",
+    )
 
 
 # InspectionState is declared before EnrichedInspectionResult exists, so its

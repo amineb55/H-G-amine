@@ -102,6 +102,8 @@
   .badge.approved { background: var(--ok-bg); border-color: #bfe0cd; color: var(--ok); }
   .badge.rejected { background: #f1f2f4; }
   .badge.queued { background: var(--ok-bg); border-color: #bfe0cd; color: var(--ok); }
+  .badge.failed { background: var(--arret-bg); border-color: #f3c6c2; color: var(--arret); }
+  dd.failure { color: var(--arret); }
   .spacer { flex: 1; }
   .ts { font-size: 12px; color: var(--ink-faint); }
 
@@ -290,8 +292,10 @@
       head.appendChild(node("span", "badge " + finding.validation_status,
         finding.validation_status === "approved" ? "Approuvé" : "Rejeté"));
     }
-    if (finding.dispatch_state === "ready_to_send") {
-      head.appendChild(node("span", "badge queued", "Prêt à transmettre"));
+    if (finding.dispatch_status === "sent") {
+      head.appendChild(node("span", "badge queued", "Transmis"));
+    } else if (finding.dispatch_status === "failed") {
+      head.appendChild(node("span", "badge failed", "Échec d'envoi"));
     }
     head.appendChild(node("span", "spacer"));
     head.appendChild(node("span", "ts", "t+" + finding.timestamp_sec + "s"));
@@ -316,6 +320,11 @@
     facts.appendChild(fact("ISO 45001", finding.iso_45001_clause));
     facts.appendChild(fact("Statut",
       finding.status === "nc" ? "Non-conformité" : "À vérifier"));
+    if (finding.dispatch_status === "sent" && finding.message_id) {
+      facts.appendChild(fact("Envoi", finding.message_id));
+    } else if (finding.dispatch_status === "failed" && finding.dispatch_error) {
+      facts.appendChild(fact("Échec", finding.dispatch_error, "failure"));
+    }
     card.appendChild(facts);
 
     var actions = node("div", "actions");
@@ -339,9 +348,19 @@
     return button;
   }
 
+  function pendingSendCount() {
+    var result = state && state.result;
+    if (!result) { return 0; }
+    return result.findings.filter(function (f) {
+      return f.validation_status === "approved" && f.dispatch_status !== "sent";
+    }).length;
+  }
+
   function setBusy(busy) {
     var buttons = document.querySelectorAll("button");
     for (var i = 0; i < buttons.length; i++) { buttons[i].disabled = busy; }
+    // Re-enabling everything would undo the dispatch button's own state.
+    if (!busy) { el.dispatchBtn.disabled = pendingSendCount() === 0; }
   }
 
   function showError(error) {
@@ -389,17 +408,24 @@
     });
 
     el.bar.hidden = false;
-    // Approval is what makes a finding dispatchable, low confidence included.
-    var approved = result.findings.filter(function (f) {
-      return f.validation_status === "approved";
+    // Approval is what queues a finding, low confidence included. Anything
+    // already sent stays sent and is never counted again.
+    var pendingSend = result.findings.filter(function (f) {
+      return f.validation_status === "approved" && f.dispatch_status !== "sent";
     });
-    var fromReview = approved.filter(function (f) { return f.requires_review; }).length;
-    el.dispatchBtn.disabled = approved.length === 0;
+    var sent = result.findings.filter(function (f) {
+      return f.dispatch_status === "sent";
+    }).length;
+    var fromReview = pendingSend.filter(function (f) { return f.requires_review; }).length;
+    el.dispatchBtn.disabled = pendingSend.length === 0;
+    el.dispatchBtn.title = pendingSend.length === 0
+      ? "Tous les constats approuvés ont déjà été transmis." : "";
     el.dispatchNote.textContent =
-      approved.length + (approved.length === 1 ? " constat approuvé" : " constats approuvés") +
-      (fromReview > 0
-        ? ", dont " + fromReview + " à confiance faible"
-        : "") + ".";
+      (pendingSend.length === 0
+        ? "Rien à envoyer"
+        : pendingSend.length + (pendingSend.length === 1 ? " constat à envoyer" : " constats à envoyer") +
+          (fromReview > 0 ? ", dont " + fromReview + " à confiance faible" : "")) +
+      (sent > 0 ? " · " + sent + " déjà transmis" : "") + ".";
   }
 
   el.dispatchBtn.addEventListener("click", function () {
@@ -409,14 +435,26 @@
         // Re-render first: render() clears the panel, so fill it afterwards.
         return request(base + "/review").then(render).then(function () {
           el.dispatchResult.hidden = false;
-          el.dispatchResult.textContent =
-            outcome.ready_to_send.length + " constat(s) marqué(s) prêts à transmettre" +
-            (outcome.approved_from_review.length
-              ? ", dont " + outcome.approved_from_review.length +
-                " approuvé(s) malgré une confiance faible"
-              : "") +
-            ". Aucun envoi n'a encore eu lieu.\n\n" +
-            JSON.stringify(outcome.ready_to_send, null, 2);
+          var lines = [
+            outcome.sent_count + " email(s) envoyé(s)" +
+            (outcome.failed_count ? ", " + outcome.failed_count + " en échec" : "") + "."
+          ];
+          if (outcome.already_sent.length) {
+            lines.push(outcome.already_sent.length +
+              " constat(s) déjà transmis, non renvoyé(s).");
+          }
+          if (outcome.unassigned.length) {
+            lines.push(outcome.unassigned.length +
+              " constat(s) approuvé(s) sans destinataire : rien n'a pu être envoyé.");
+          }
+          outcome.emails.forEach(function (mail) {
+            lines.push(
+              (mail.status === "sent" ? "  OK   " : "  ECHEC") + " " + mail.email +
+              " [" + (mail.kind === "immediate" ? "arret immediat" : "recapitulatif") + "] " +
+              mail.finding_indexes.length + " constat(s)" +
+              (mail.status === "sent" ? " — " + mail.message_id : " — " + mail.error));
+          });
+          el.dispatchResult.textContent = lines.join("\n");
         });
       })
       .catch(showError)

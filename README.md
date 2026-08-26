@@ -19,6 +19,8 @@ app/
   services/providers/           provider implementation behind that interface
   services/inspection_prompt.py rule catalogs and system prompt assembly
   services/assignment.py        assignment, deadlines and review summary
+  services/notification.py      grouping findings into per-recipient emails
+  services/notifiers/           email provider implementation
   services/storage.py           media storage (local filesystem)
   services/inspection_store.py  inspection state (in-memory)
   services/job_queue.py         job dispatch interface
@@ -40,7 +42,7 @@ requirements.txt
 | `GET` | `/inspections/{id}/review` | Enriched result plus review counts. |
 | `POST` | `/inspections/{id}/findings/{index}/approve` | Approve one finding. |
 | `POST` | `/inspections/{id}/findings/{index}/reject` | Reject one finding. |
-| `POST` | `/inspections/{id}/dispatch` | Queue approved findings. Sends nothing yet. |
+| `POST` | `/inspections/{id}/dispatch` | Email the approved findings to their owners. |
 | `GET` | `/review/{id}` | The review screen. |
 
 `POST /inspections` takes a multipart body with a `referentiel` field
@@ -101,12 +103,49 @@ Every finding carries `validation_status`, `pending` until a human decides.
 `POST .../approve` and `POST .../reject` record that decision; rejecting a
 finding that was already queued removes it from the queue.
 
-`POST /inspections/{id}/dispatch` marks approved findings `ready_to_send` and
-returns them with their recipients and deadlines. Only findings left `pending`
-or `rejected` are excluded — an approved finding is dispatched whatever its
-confidence, and the ones that were flagged for review are listed in
-`approved_from_review` so the decision stays visible. **It sends nothing**: the
-response always carries `sent: false`.
+`POST /inspections/{id}/dispatch` emails the approved findings to the people
+accountable for them. Only findings left `pending` or `rejected` are excluded —
+an approved finding is sent whatever its confidence, and the ones flagged for
+review are listed in `approved_from_review` so the decision stays visible.
+
+## Notifications
+
+Emails are grouped **by recipient, not by finding**: one person receives one
+message listing everything they own, rather than eight separate emails.
+
+Findings that require work to stop immediately are pulled into their own
+message, sent before the digests, with the subject prefix `[ARRET IMMEDIAT]` —
+an imminent danger is never buried in a summary. A recipient therefore receives
+at most two emails per dispatch.
+
+Each finding carries its own outcome: `dispatch_status` is `not_queued`, `sent`
+or `failed`, with `message_id` on success and `dispatch_error` on failure. The
+response reports one `EmailOutcome` per email attempted.
+
+- **Partial failure never rolls back a success.** Each email is independent; a
+  failed one marks only its own findings `failed` and leaves delivered ones
+  alone.
+- **Nothing is ever sent twice.** A finding already `sent` is skipped on any
+  later dispatch and listed in `already_sent`, so calling dispatch again after
+  a partial failure retries only what failed.
+- Approved findings with no recipient are reported in `unassigned` rather than
+  silently dropped.
+
+Everything the model wrote is HTML-escaped before it reaches an email body.
+
+### Email provider
+
+`app/services/notifiers/email_notifier.py` is the only module aware of which
+email provider is used — its endpoint, payload and status codes stop there. It
+exposes one function:
+
+```python
+async def send(to: str, subject: str, html: str) -> str  # returns the message id
+```
+
+It calls the provider's transactional HTTP API with `httpx`; no provider SDK is
+installed. Failures surface as readable messages — bad credentials, rate
+limiting, unavailability, timeout and unreachable host each get their own.
 
 ### Review screen
 
@@ -192,6 +231,11 @@ Settings are read from the environment and from `.env` (see `.env.example`).
 | `ANALYSIS_ENGINE_MODEL` | *(empty)* | Model identifier. Empty uses the provider default. |
 | `ANALYSIS_ENGINE_TIMEOUT_SECONDS` | `120` | Per-request timeout. |
 | `ANALYSIS_ENGINE_VIDEO_FPS` | `1.0` | Frames sampled per second of video. |
+| `BREVO_API_KEY` | *(empty)* | Email provider credentials. Required to send. |
+| `BREVO_SENDER_EMAIL` | *(empty)* | Address emails are sent from. |
+| `NOTIFIER_SENDER_NAME` | `Inspection HSE` | Display name on outgoing email. |
+| `NOTIFIER_TIMEOUT_SECONDS` | `30` | Per-request timeout when sending. |
+| `NOTIFIER_API_URL` | *(empty)* | Override the provider endpoint. Empty uses the default. |
 
 ## Analysis engine
 

@@ -8,9 +8,8 @@ from fastapi.responses import FileResponse
 
 from app.config import get_settings
 from app.models.schemas import (
-    DispatchedFinding,
     DispatchResponse,
-    DispatchState,
+    DispatchStatus,
     EnrichedInspectionResult,
     InspectionAccepted,
     InspectionState,
@@ -19,7 +18,7 @@ from app.models.schemas import (
     ReviewResponse,
     ValidationStatus,
 )
-from app.services import assignment, inspection_store, job_queue, storage
+from app.services import assignment, inspection_store, job_queue, notification, storage
 from app.services.inspection_job import run_inspection
 
 REVIEW_PAGE = Path(__file__).resolve().parent.parent / "templates" / "review.html"
@@ -177,8 +176,11 @@ def _set_validation(
     finding = result.findings[index]
     finding.validation_status = validation_status
     if validation_status is not ValidationStatus.APPROVED:
-        # A finding that is no longer approved must not stay queued.
-        finding.dispatch_state = DispatchState.NOT_QUEUED
+        # A finding that is no longer approved must not stay queued. What has
+        # already been sent stays on the record: it cannot be unsent.
+        if finding.dispatch_status is not DispatchStatus.SENT:
+            finding.dispatch_status = DispatchStatus.NOT_QUEUED
+            finding.dispatch_error = None
 
     inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
     return ReviewResponse(
@@ -217,11 +219,11 @@ async def reject_finding(inspection_id: str, index: int) -> ReviewResponse:
 
 @app.post("/inspections/{inspection_id}/dispatch", response_model=DispatchResponse)
 async def dispatch_inspection(inspection_id: str) -> DispatchResponse:
-    """Queue the approved findings for notification.
+    """Notify the people accountable for the approved findings.
 
-    Nothing is sent yet: approved findings are marked ready to send and
-    returned. A finding flagged for review is dispatched like any other once
-    a human has explicitly approved it.
+    One email per recipient rather than one per finding, with immediate-stop
+    findings pulled into their own message sent first. A finding already sent
+    is never sent again, and one failed email never undoes a successful one.
     """
     _, result = _load_result(inspection_id)
     if result is None:
@@ -230,36 +232,36 @@ async def dispatch_inspection(inspection_id: str) -> DispatchResponse:
             detail="This inspection has no result to dispatch yet.",
         )
 
-    queued: list[DispatchedFinding] = []
-    from_review: list[int] = []
-
+    already_sent: list[int] = []
+    unassigned: list[int] = []
     for index, finding in enumerate(result.findings):
-        # Approval is the human act that resolves any doubt, including on a
-        # low-confidence finding. Only what nobody approved is left out.
         if finding.validation_status is not ValidationStatus.APPROVED:
-            finding.dispatch_state = DispatchState.NOT_QUEUED
             continue
+        if finding.dispatch_status is DispatchStatus.SENT:
+            already_sent.append(index)
+        elif not finding.notify_emails:
+            unassigned.append(index)
 
-        finding.dispatch_state = DispatchState.READY_TO_SEND
-        if finding.requires_review:
-            from_review.append(index)
-        queued.append(
-            DispatchedFinding(
-                index=index,
-                rule_id=finding.rule_id,
-                observed_severity=finding.observed_severity,
-                deadline_date=finding.deadline_date,
-                assigned_name=finding.assigned_name,
-                notify_emails=finding.notify_emails,
-            )
-        )
+    outcomes = await notification.dispatch(result)
 
+    # Persist whatever happened, successes and failures alike.
     inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
+
+    notified = {i for outcome in outcomes if outcome.status is DispatchStatus.SENT
+                for i in outcome.finding_indexes}
+    sent_count = sum(1 for o in outcomes if o.status is DispatchStatus.SENT)
+
     return DispatchResponse(
         inspection_id=inspection_id,
-        ready_to_send=queued,
-        approved_from_review=from_review,
-        sent=False,
+        sent=sent_count > 0,
+        emails=outcomes,
+        sent_count=sent_count,
+        failed_count=len(outcomes) - sent_count,
+        already_sent=already_sent,
+        approved_from_review=sorted(
+            i for i in notified if result.findings[i].requires_review
+        ),
+        unassigned=unassigned,
     )
 
 

@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -36,6 +37,15 @@ class Settings(BaseSettings):
 
     # Frames sampled per second of video. Lower means cheaper.
     analysis_engine_video_fps: float = 1.0
+
+    # Email notifications. The Python names stay provider-neutral; only the
+    # environment variable names below are provider-specific.
+    notifier_api_key: str = Field("", validation_alias="BREVO_API_KEY")
+    notifier_sender_email: str = Field("", validation_alias="BREVO_SENDER_EMAIL")
+    notifier_sender_name: str = "Inspection HSE"
+    notifier_timeout_seconds: int = 30
+    # Leave empty to use the notifier's own endpoint.
+    notifier_api_url: str = ""
 
 
 @lru_cache
