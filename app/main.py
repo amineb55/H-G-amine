@@ -17,6 +17,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings, redact
 from app.models.schemas import (
@@ -28,6 +29,7 @@ from app.models.schemas import (
     ManualFinding,
     EnrichedInspectionResult,
     InspectionAccepted,
+    InspectionStage,
     InspectionState,
     InspectionStatus,
     Referentiel,
@@ -45,9 +47,11 @@ from app.services import (
     storage,
 )
 from app.services.inspection_job import run_inspection
-from app.services.notifiers import email_notifier
 
-REVIEW_PAGE = Path(__file__).resolve().parent.parent / "templates" / "review.html"
+TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+REVIEW_PAGE = TEMPLATES_DIR / "review.html"
+LANDING_PAGE = TEMPLATES_DIR / "index.html"
 
 settings = get_settings()
 
@@ -152,6 +156,10 @@ app = FastAPI(
 )
 
 
+if STATIC_DIR.is_dir():
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
 @app.exception_handler(inspection_store.StoreError)
 async def _store_unavailable(_: Request, exc: inspection_store.StoreError) -> JSONResponse:
     """A store failure is the backend's fault, and the caller is told why."""
@@ -249,6 +257,7 @@ async def create_inspection(
         inspection_id,
         {
             "status": InspectionStatus.PROCESSING,
+            "stage": InspectionStage.RECEPTION,
             "referentiel": referentiel.value,
             "result": None,
             "error": None,
@@ -273,7 +282,10 @@ async def read_inspection(inspection_id: str) -> InspectionState:
             status_code=status.HTTP_404_NOT_FOUND, detail="Unknown inspection."
         )
     return InspectionState(
-        status=record["status"], result=record["result"], error=record["error"]
+        status=record["status"],
+        stage=record.get("stage"),
+        result=record["result"],
+        error=record["error"],
     )
 
 
@@ -557,13 +569,31 @@ async def read_options(referentiel: Referentiel) -> dict:
     }
 
 
-@app.get("/debug/notifier", include_in_schema=False)
-async def debug_notifier() -> dict:
-    """Report what the email notifier can actually reach, step by step.
 
-    Temporary diagnostic tooling for investigating a failure that appears in
-    one environment and not another. The response carries no secret: only
-    whether one is configured, the host being contacted, and the outcome of
-    each step. Remove this endpoint once the problem is understood.
+
+@app.get("/referentiels", include_in_schema=False)
+async def read_referentiels() -> list[dict]:
+    """The referentials on offer, with the label each catalog carries.
+
+    Read from the rule files so the landing page stays driven by
+    configuration rather than by a list hardcoded in the page.
     """
-    return await email_notifier.diagnose_connectivity()
+    entries: list[dict] = []
+    for referentiel in Referentiel:
+        entries.append(
+            {
+                "key": referentiel.value,
+                "label": inspection_prompt.referentiel_label(referentiel.value),
+            }
+        )
+    return entries
+
+
+@app.get("/", include_in_schema=False)
+async def landing_page() -> FileResponse:
+    """Serve the entry point."""
+    if not LANDING_PAGE.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Landing page not available."
+        )
+    return FileResponse(LANDING_PAGE, media_type="text/html")

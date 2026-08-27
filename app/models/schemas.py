@@ -57,6 +57,21 @@ class DispatchStatus(str, Enum):
     FAILED = "failed"
 
 
+class InspectionStage(str, Enum):
+    """How far the job has got.
+
+    Only transitions the job can actually observe. Reading the media,
+    auditing it against the referential and grading the severity all happen
+    inside one call to the analysis engine, so they share the ANALYSE stage
+    rather than being reported as three separate steps.
+    """
+
+    RECEPTION = "reception"
+    ANALYSE = "analyse"
+    ASSIGNATION = "assignation"
+    TERMINE = "termine"
+
+
 class InspectionStatus(str, Enum):
     """Lifecycle of an inspection request."""
 
@@ -100,6 +115,9 @@ class InspectionState(BaseModel):
     """Current state of an inspection."""
 
     status: InspectionStatus = Field(..., description="Lifecycle status of the inspection.")
+    stage: InspectionStage | None = Field(
+        None, description="How far the job has got. Only observed transitions."
+    )
     result: "EnrichedInspectionResult | None" = Field(
         None, description="Analysis result, once the inspection is done."
     )

@@ -38,6 +38,8 @@ requirements.txt
 
 | Method | Path | Description |
 | --- | --- | --- |
+| `GET` | `/` | The landing page: pick a referential, upload, watch progress. |
+| `GET` | `/referentiels` | The referentials on offer, with their labels. |
 | `GET` | `/health` | Liveness probe. |
 | `POST` | `/inspections` | Upload media and queue an analysis. Returns `202`. |
 | `GET` | `/inspections/{id}` | Current status and result. |
@@ -185,6 +187,31 @@ on their own message.
 
 Everything the model wrote is HTML-escaped before it reaches an email body.
 
+### Landing page
+
+`GET /` serves `templates/index.html`, built like the review screen: plain
+HTML, vanilla JS, no framework and no build step. It lists the referentials
+from `GET /referentiels` — read from the rule catalogs, so adding one is a
+YAML change — takes a video or up to ten images by drag-and-drop, click or
+device camera, and applies the same validation as the upload endpoint before
+sending anything.
+
+**Progress reporting is limited to what the job can observe.** The job records
+a `stage` on the inspection, exposed by `GET /inspections/{id}`:
+
+| Stage | Set when | Shown as |
+| --- | --- | --- |
+| `reception` | media stored, job queued | Lecture du média |
+| `analyse` | the engine call is in flight | Confrontation au référentiel **and** Évaluation de la criticité, together |
+| `assignation` | the engine returned, enrichment running | Assignation des responsables |
+| `termine` | done or failed | all complete |
+
+Reading the media, auditing it against the referential and grading the
+severity happen inside **one** call to the analysis engine. Their boundaries
+are not observable, so the two corresponding rows light up together rather
+than being animated as if they completed in sequence. Nothing on the page
+claims a stage is finished that the backend has not confirmed.
+
 ### Diagnosing a delivery failure
 
 A transport failure is logged at `ERROR` before it is wrapped, with the
@@ -199,21 +226,6 @@ ERROR Email transport failure [dns] host=api.example.com recipient=... :
 The wrapped message names the cause rather than saying the service could not
 be reached: `dns`, `connection_refused`, `tls`, `tls_verification`, `proxy`,
 `network_unreachable`, `connection_reset`, `timeout`, or an HTTP status.
-
-`GET /debug/notifier` runs the same path step by step and reports where it
-stops — configuration presence, DNS resolution, TCP and TLS, then a read-only
-API call that sends no mail. It returns **no secret**: only whether a key and
-a sender are configured, the host being contacted, and each step's outcome.
-
-```json
-{
-  "endpoint_host": "api.example.com", "endpoint_scheme": "https",
-  "dns": {"ok": true, "addresses": ["..."]},
-  "tcp_tls": {"ok": true, "tls_version": "TLSv1.3", "certificate_issuer": "..."},
-  "api_call": {"ok": false, "status_code": 401, "message": "..."},
-  "outcome": "failed at api_call"
-}
-```
 
 Any text derived from an exception — the wrapped message, the log line, the
 traceback, and every field of the diagnostic response — is scrubbed of the
@@ -230,10 +242,6 @@ value. Startup names any variable that had to be stripped, never its value:
 ```
 WARNING Surrounding whitespace was stripped from: NOTIFIER_API_KEY.
 ```
-
-This endpoint is **temporary diagnostic tooling**. It is unauthenticated like
-the rest of the service, so it does disclose the provider host and whether
-credentials are set — remove it once the problem is understood.
 
 ### Email provider
 

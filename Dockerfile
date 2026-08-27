@@ -28,6 +28,7 @@ COPY --from=builder /install /usr/local
 WORKDIR /app
 COPY app ./app
 COPY templates ./templates
+COPY static ./static
 
 # Scratch space for uploads, which are deleted as soon as a job ends.
 RUN mkdir -p /app/data/uploads \

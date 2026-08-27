@@ -2,7 +2,7 @@
 
 import logging
 
-from app.models.schemas import InspectionResult, InspectionStatus
+from app.models.schemas import InspectionResult, InspectionStage, InspectionStatus
 from app.services import analysis_engine, assignment, evidence, inspection_store, storage
 
 logger = logging.getLogger(__name__)
@@ -17,10 +17,14 @@ async def run_inspection(inspection_id: str, referentiel: str) -> None:
     """
     try:
         media_path = storage.path(inspection_id)
+        # The engine reads the media, audits it against the referential and
+        # grades the severity in a single call: one stage, not three.
+        await inspection_store.update(inspection_id, stage=InspectionStage.ANALYSE)
         raw = await analysis_engine.analyze(media_path, referentiel)
         result = InspectionResult.model_validate(
             {**raw, "inspection_id": inspection_id, "referentiel": referentiel}
         )
+        await inspection_store.update(inspection_id, stage=InspectionStage.ASSIGNATION)
         enriched = assignment.enrich(result)
 
         # Read the capture time and cut the evidence before the media goes.
@@ -33,6 +37,7 @@ async def run_inspection(inspection_id: str, referentiel: str) -> None:
         await inspection_store.update(
             inspection_id,
             status=InspectionStatus.DONE,
+            stage=InspectionStage.TERMINE,
             result=enriched.model_dump(mode="json"),
             error=None,
         )
@@ -41,6 +46,7 @@ async def run_inspection(inspection_id: str, referentiel: str) -> None:
         await inspection_store.update(
             inspection_id,
             status=InspectionStatus.FAILED,
+            stage=InspectionStage.TERMINE,
             result=None,
             error=str(exc) or exc.__class__.__name__,
         )

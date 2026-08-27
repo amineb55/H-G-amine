@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inspection HSE</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e2e0dd;
+    --border-strong: #cfccc7;
+    --ink: #1e293b;
+    --ink-soft: #55606f;
+    --ink-faint: #8b939e;
+    --slate: #1e293b;
+    --arret: #b3261e;
+    --critique: #c2410c;
+    --majeur: #a16207;
+    --mineur: #0f6f8f;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-weight: 400;
+  }
+
+  header.bar { background: var(--slate); color: #fff; padding: 22px 20px; }
+  header.bar .inner { max-width: 940px; margin: 0 auto; }
+  header.bar h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em; }
+  header.bar p { margin: 0; font-size: 15px; color: #c8cfd9; }
+
+  main { max-width: 940px; margin: 0 auto; padding: 36px 20px 72px; }
+  section { margin-bottom: 40px; }
+  h2 {
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--ink-faint); margin: 0 0 14px;
+  }
+
+  .referentiels { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .ref {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 22px 20px; cursor: pointer;
+    text-align: left; font: inherit; color: var(--ink); width: 100%;
+  }
+  .ref:hover { border-color: var(--border-strong); }
+  .ref[aria-pressed="true"] {
+    border-color: var(--slate); box-shadow: inset 0 0 0 1px var(--slate);
+  }
+  .ref .name { font-size: 17px; font-weight: 600; margin-bottom: 3px; }
+  .ref .state { font-size: 13px; color: var(--ink-faint); }
+  .ref[aria-pressed="true"] .state { color: var(--slate); font-weight: 600; }
+
+  .drop {
+    background: var(--surface); border: 2px dashed var(--border-strong);
+    border-radius: var(--radius); padding: 44px 24px; text-align: center;
+    cursor: pointer;
+  }
+  .drop.over { border-color: var(--slate); background: #f4f4f2; }
+  .drop .headline { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+  .drop .hint { font-size: 14px; color: var(--ink-soft); }
+  .drop .limits { font-size: 13px; color: var(--ink-faint); margin-top: 10px; }
+
+  .capture { margin-top: 14px; }
+  .files { list-style: none; margin: 16px 0 0; padding: 0; }
+  .files li {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 12px; margin-bottom: 7px; font-size: 14px;
+  }
+  .files .fname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .files .fsize { color: var(--ink-faint); font-size: 13px; white-space: nowrap; }
+
+  button {
+    font: inherit; font-size: 15px; padding: 11px 20px;
+    border: 1px solid var(--border-strong); border-radius: 8px;
+    background: var(--surface); color: var(--ink); cursor: pointer;
+  }
+  button:hover:not(:disabled) { background: #f1f1ef; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  button.primary {
+    background: var(--slate); border-color: var(--slate); color: #fff; font-weight: 600;
+  }
+  button.primary:hover:not(:disabled) { background: #2c3a4d; }
+  button.remove {
+    padding: 4px 10px; font-size: 13px; border-radius: 6px; color: var(--ink-soft);
+  }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 20px; }
+  .example {
+    background: none; border: none; padding: 0; font-size: 14px;
+    color: var(--ink-soft); text-decoration: underline; cursor: pointer;
+  }
+  .example:hover { color: var(--ink); background: none; }
+
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px; }
+  .step .t { font-size: 15px; font-weight: 600; margin-bottom: 5px; }
+  .step .d { font-size: 14px; color: var(--ink-soft); }
+  .step .rule { height: 3px; width: 34px; border-radius: 2px; margin-bottom: 12px; }
+  .step:nth-child(1) .rule { background: var(--arret); }
+  .step:nth-child(2) .rule { background: var(--majeur); }
+  .step:nth-child(3) .rule { background: var(--mineur); }
+
+  /* Progression */
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 26px 24px;
+  }
+  .panel h3 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
+  .panel .sub { margin: 0 0 20px; font-size: 14px; color: var(--ink-soft); }
+  ol.stages { list-style: none; margin: 0; padding: 0; }
+  ol.stages li {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 11px 0; border-top: 1px solid var(--border);
+  }
+  ol.stages li:first-child { border-top: none; }
+  .marker {
+    flex: none; width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid var(--border-strong); margin-top: 2px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+  }
+  li.active .marker { border-color: var(--slate); }
+  li.active .marker::after {
+    content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--slate);
+  }
+  li.done .marker { border-color: var(--mineur); background: var(--mineur); }
+  li.done .marker::after { content: "\2713"; }
+  .stage-name { font-size: 15px; color: var(--ink-faint); }
+  li.active .stage-name { color: var(--ink); font-weight: 600; }
+  li.done .stage-name { color: var(--ink); }
+  .stage-note { font-size: 13px; color: var(--ink-faint); margin-top: 2px; }
+  .elapsed { margin-top: 18px; font-size: 13px; color: var(--ink-faint); }
+  .failure {
+    margin-top: 18px; padding: 14px 16px; border-radius: 8px;
+    background: #fdecea; border: 1px solid #f3c6c2; color: var(--arret); font-size: 14px;
+  }
+  .notice {
+    margin-top: 16px; padding: 12px 14px; border-radius: 8px;
+    background: #f4f4f2; border: 1px solid var(--border); font-size: 14px; color: var(--ink-soft);
+  }
+  .notice.error { background: #fdecea; border-color: #f3c6c2; color: var(--arret); }
+
+  footer.disclaimer {
+    border-top: 1px solid var(--border); padding-top: 18px;
+    font-size: 13px; color: var(--ink-faint);
+  }
+  @media (max-width: 600px) {
+    main { padding: 26px 16px 56px; }
+    .drop { padding: 32px 16px; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="inner">
+    <h1>Inspection HSE</h1>
+    <p>Filmez la visite. Le rapport s'écrit, s'assigne et part tout seul.</p>
+  </div>
+</header>
+
+<main>
+  <section id="setup">
+    <h2>Référentiel</h2>
+    <div class="referentiels" id="referentiels"></div>
+  </section>
+
+  <section id="upload-section">
+    <h2>Média de la visite</h2>
+    <div class="drop" id="drop" tabindex="0" role="button"
+         aria-label="Déposer un fichier ou parcourir">
+      <div class="headline">Déposez une vidéo ou des photos</div>
+      <div class="hint">ou cliquez pour parcourir vos fichiers</div>
+      <div class="limits">Une vidéo, ou jusqu'à 10 photos · 200 Mo par fichier ·
+        MP4, MOV, JPEG, PNG</div>
+    </div>
+    <input type="file" id="picker" multiple accept="video/mp4,video/quicktime,image/jpeg,image/png" hidden>
+    <div class="capture">
+      <input type="file" id="camera" accept="image/*" capture="environment" hidden>
+      <button type="button" id="camera-btn">Prendre une photo</button>
+    </div>
+    <ul class="files" id="files"></ul>
+    <div class="actions">
+      <button type="button" class="primary" id="submit" disabled>Lancer l'analyse</button>
+      <button type="button" class="example" id="example">Essayer avec un exemple</button>
+    </div>
+    <div id="upload-error"></div>
+  </section>
+
+  <section id="progress-section" hidden>
+    <h2>Analyse en cours</h2>
+    <div class="panel">
+      <h3 id="progress-title">Analyse de la visite</h3>
+      <p class="sub" id="progress-sub">Vous serez redirigé vers l'écran de validation dès que c'est prêt.</p>
+      <ol class="stages" id="stages"></ol>
+      <div class="elapsed" id="elapsed"></div>
+      <div id="progress-error"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Comment ça marche</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="rule"></div>
+        <div class="t">Détecte et hiérarchise</div>
+        <div class="d">Chaque écart est rattaché à une règle du référentiel et gradué
+          selon ce que montre la scène, pas selon un barème figé.</div>
+      </div>
+      <div class="step">
+        <div class="rule"></div>
+        <div class="t">Vous validez</div>
+        <div class="d">Rien ne part sans votre accord. Vous corrigez une gravité,
+          reformulez un constat, en ajoutez un que l'analyse a manqué.</div>
+      </div>
+      <div class="step">
+        <div class="rule"></div>
+        <div class="t">L'agent notifie et relance</div>
+        <div class="d">Chaque responsable reçoit ses constats, avec l'image probante,
+          l'échéance et le rapport PDF complet.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="disclaimer">
+    Analyse assistée par IA — validation humaine requise.
+  </footer>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var VIDEO_TYPES = ["video/mp4", "video/quicktime"];
+  var IMAGE_TYPES = ["image/jpeg", "image/png"];
+  var MAX_BYTES = 200 * 1024 * 1024;
+  var MAX_IMAGES = 10;
+  var POLL_MS = 2000;
+
+  // Les étapes que le serveur sait réellement observer. La lecture du média,
+  // la confrontation au référentiel et l'évaluation de la criticité ont lieu
+  // dans un seul appel au moteur : elles partagent l'étape « analyse ».
+  var STAGES = [
+    { key: "reception",   name: "Lecture du média" },
+    { key: "analyse",     name: "Confrontation au référentiel" },
+    { key: "analyse",     name: "Évaluation de la criticité" },
+    { key: "assignation", name: "Assignation des responsables" }
+  ];
+  var ORDER = ["reception", "analyse", "assignation", "termine"];
+
+  var el = {
+    referentiels: document.getElementById("referentiels"),
+    drop: document.getElementById("drop"),
+    picker: document.getElementById("picker"),
+    camera: document.getElementById("camera"),
+    cameraBtn: document.getElementById("camera-btn"),
+    files: document.getElementById("files"),
+    submit: document.getElementById("submit"),
+    example: document.getElementById("example"),
+    uploadError: document.getElementById("upload-error"),
+    setup: document.getElementById("setup"),
+    uploadSection: document.getElementById("upload-section"),
+    progressSection: document.getElementById("progress-section"),
+    progressTitle: document.getElementById("progress-title"),
+    progressSub: document.getElementById("progress-sub"),
+    stages: document.getElementById("stages"),
+    elapsed: document.getElementById("elapsed"),
+    progressError: document.getElementById("progress-error")
+  };
+
+  var referentiel = null;
+  var chosen = [];
+  var timer = null;
+  var startedAt = 0;
+
+  function node(tag, className, text) {
+    var n = document.createElement(tag);
+    if (className) { n.className = className; }
+    if (text !== undefined && text !== null) { n.textContent = String(text); }
+    return n;
+  }
+
+  function showError(target, message) {
+    target.textContent = "";
+    if (message) { target.appendChild(node("div", "notice error", message)); }
+  }
+
+  function humanSize(bytes) {
+    if (bytes < 1024) { return bytes + " o"; }
+    if (bytes < 1024 * 1024) { return Math.round(bytes / 1024) + " Ko"; }
+    return (bytes / (1024 * 1024)).toFixed(1) + " Mo";
+  }
+
+  // --- référentiels -------------------------------------------------------
+
+  function renderReferentiels(entries) {
+    el.referentiels.textContent = "";
+    entries.forEach(function (entry, index) {
+      var card = node("button", "ref");
+      card.type = "button";
+      card.appendChild(node("div", "name", entry.label));
+      card.appendChild(node("div", "state", "Sélectionner"));
+      card.addEventListener("click", function () { select(entry.key); });
+      card.dataset.key = entry.key;
+      el.referentiels.appendChild(card);
+      if (index === 0) { select(entry.key); }
+    });
+  }
+
+  function select(key) {
+    referentiel = key;
+    var cards = el.referentiels.querySelectorAll(".ref");
+    for (var i = 0; i < cards.length; i++) {
+      var active = cards[i].dataset.key === key;
+      cards[i].setAttribute("aria-pressed", active ? "true" : "false");
+      cards[i].querySelector(".state").textContent = active ? "Sélectionné" : "Sélectionner";
+    }
+    refreshSubmit();
+  }
+
+  // --- fichiers -----------------------------------------------------------
+
+  function validate(list) {
+    if (list.length === 0) { return "Ajoutez au moins un fichier."; }
+    var bad = list.filter(function (f) {
+      return VIDEO_TYPES.indexOf(f.type) < 0 && IMAGE_TYPES.indexOf(f.type) < 0;
+    });
+    if (bad.length) {
+      return "Format non accepté : " + bad.map(function (f) { return f.name; }).join(", ") +
+        ". Formats acceptés : MP4, MOV, JPEG, PNG.";
+    }
+    var tooBig = list.filter(function (f) { return f.size > MAX_BYTES; });
+    if (tooBig.length) {
+      return "Fichier trop volumineux (200 Mo maximum) : " +
+        tooBig.map(function (f) { return f.name; }).join(", ") + ".";
+    }
+    var videos = list.filter(function (f) { return VIDEO_TYPES.indexOf(f.type) >= 0; });
+    var images = list.filter(function (f) { return IMAGE_TYPES.indexOf(f.type) >= 0; });
+    if (videos.length && images.length) {
+      return "Envoyez soit une vidéo, soit des photos, mais pas les deux.";
+    }
+    if (videos.length > 1) { return "Une seule vidéo par inspection."; }
+    if (images.length > MAX_IMAGES) { return "10 photos au maximum par inspection."; }
+    return null;
+  }
+
+  function addFiles(list) {
+    var merged = chosen.concat(Array.prototype.slice.call(list));
+    var problem = validate(merged);
+    if (problem) { showError(el.uploadError, problem); return; }
+    showError(el.uploadError, null);
+    chosen = merged;
+    renderFiles();
+  }
+
+  function renderFiles() {
+    el.files.textContent = "";
+    chosen.forEach(function (file, index) {
+      var row = node("li");
+      row.appendChild(node("span", "fname", file.name));
+      row.appendChild(node("span", "fsize", humanSize(file.size)));
+      var remove = node("button", "remove", "Retirer");
+      remove.type = "button";
+      remove.addEventListener("click", function () {
+        chosen.splice(index, 1);
+        showError(el.uploadError, null);
+        renderFiles();
+      });
+      row.appendChild(remove);
+      el.files.appendChild(row);
+    });
+    refreshSubmit();
+  }
+
+  function refreshSubmit() {
+    el.submit.disabled = !(referentiel && chosen.length > 0);
+  }
+
+  // --- envoi --------------------------------------------------------------
+
+  function submit(files) {
+    var problem = validate(files);
+    if (problem) { showError(el.uploadError, problem); return; }
+
+    var form = new FormData();
+    form.append("referentiel", referentiel);
+    files.forEach(function (file) { form.append("files", file, file.name); });
+
+    el.submit.disabled = true;
+    el.example.disabled = true;
+    showError(el.uploadError, null);
+
+    fetch("/inspections", { method: "POST", body: form })
+      .then(function (response) {
+        return response.json().then(function (body) {
+          if (!response.ok) {
+            throw new Error(readDetail(body) || "L'envoi a échoué.");
+          }
+          return body;
+        });
+      })
+      .then(function (accepted) { startProgress(accepted.inspection_id); })
+      .catch(function (error) {
+        el.submit.disabled = false;
+        el.example.disabled = false;
+        refreshSubmit();
+        showError(el.uploadError, error.message);
+      });
+  }
+
+  function readDetail(body) {
+    if (!body || !body.detail) { return null; }
+    if (typeof body.detail === "string") { return body.detail; }
+    if (body.detail.length && body.detail[0] && body.detail[0].msg) {
+      return body.detail[0].msg;
+    }
+    return null;
+  }
+
+  // --- progression --------------------------------------------------------
+
+  function startProgress(id) {
+    el.setup.hidden = true;
+    el.uploadSection.hidden = true;
+    el.progressSection.hidden = false;
+    startedAt = Date.now();
+    renderStages("reception");
+    tickElapsed();
+    poll(id);
+    timer = window.setInterval(function () { poll(id); }, POLL_MS);
+    window.setInterval(tickElapsed, 1000);
+  }
+
+  function renderStages(stage, failed) {
+    var reached = ORDER.indexOf(stage);
+    if (reached < 0) { reached = 0; }
+    el.stages.textContent = "";
+    STAGES.forEach(function (entry) {
+      var position = ORDER.indexOf(entry.key);
+      var row = node("li");
+      if (!failed && position < reached) { row.className = "done"; }
+      else if (!failed && position === reached) { row.className = "active"; }
+      row.appendChild(node("span", "marker"));
+      var body = node("div");
+      body.appendChild(node("div", "stage-name", entry.name));
+      row.appendChild(body);
+      el.stages.appendChild(row);
+    });
+  }
+
+  function tickElapsed() {
+    if (!startedAt) { return; }
+    var seconds = Math.round((Date.now() - startedAt) / 1000);
+    el.elapsed.textContent = "Temps écoulé : " + seconds + " s";
+  }
+
+  function stop() {
+    if (timer) { window.clearInterval(timer); timer = null; }
+  }
+
+  function poll(id) {
+    fetch("/inspections/" + encodeURIComponent(id))
+      .then(function (response) {
+        return response.json().then(function (body) {
+          if (!response.ok) { throw new Error(readDetail(body) || "Suivi indisponible."); }
+          return body;
+        });
+      })
+      .then(function (state) {
+        if (state.status === "done") {
+          stop();
+          renderStages("termine");
+          el.progressTitle.textContent = "Analyse terminée";
+          el.progressSub.textContent = "Redirection vers l'écran de validation…";
+          window.location.href = "/review/" + encodeURIComponent(id);
+          return;
+        }
+        if (state.status === "failed") {
+          stop();
+          renderStages(state.stage || "reception", true);
+          el.progressTitle.textContent = "L'analyse n'a pas abouti";
+          el.progressSub.textContent = "Aucun constat n'a été produit.";
+          el.elapsed.textContent = "";
+          showFailure(state.error || "L'analyse a échoué.");
+          return;
+        }
+        renderStages(state.stage || "reception");
+      })
+      .catch(function (error) {
+        // Une interruption de suivi n'annule pas l'analyse : on réessaie.
+        el.elapsed.textContent = "Suivi interrompu (" + error.message + "), nouvelle tentative…";
+      });
+  }
+
+  function showFailure(message) {
+    el.progressError.textContent = "";
+    el.progressError.appendChild(node("div", "failure", message));
+    var again = node("button", "primary", "Réessayer");
+    again.type = "button";
+    again.style.marginTop = "14px";
+    again.addEventListener("click", function () { window.location.reload(); });
+    el.progressError.appendChild(again);
+  }
+
+  // --- branchements -------------------------------------------------------
+
+  el.drop.addEventListener("click", function () { el.picker.click(); });
+  el.drop.addEventListener("keydown", function (event) {
+    if (event.key === "Enter" || event.key === " ") { event.preventDefault(); el.picker.click(); }
+  });
+  ["dragenter", "dragover"].forEach(function (name) {
+    el.drop.addEventListener(name, function (event) {
+      event.preventDefault(); el.drop.classList.add("over");
+    });
+  });
+  ["dragleave", "drop"].forEach(function (name) {
+    el.drop.addEventListener(name, function (event) {
+      event.preventDefault(); el.drop.classList.remove("over");
+    });
+  });
+  el.drop.addEventListener("drop", function (event) {
+    if (event.dataTransfer && event.dataTransfer.files) { addFiles(event.dataTransfer.files); }
+  });
+  el.picker.addEventListener("change", function () {
+    addFiles(el.picker.files); el.picker.value = "";
+  });
+  el.cameraBtn.addEventListener("click", function () { el.camera.click(); });
+  el.camera.addEventListener("change", function () {
+    addFiles(el.camera.files); el.camera.value = "";
+  });
+  el.submit.addEventListener("click", function () { submit(chosen); });
+
+  el.example.addEventListener("click", function () {
+    el.example.disabled = true;
+    el.example.textContent = "Chargement de l'exemple…";
+    fetch("/static/demo/chantier-exemple.jpg")
+      .then(function (response) {
+        if (!response.ok) { throw new Error("Exemple indisponible."); }
+        return response.blob();
+      })
+      .then(function (blob) {
+        var file = new File([blob], "chantier-exemple.jpg", { type: "image/jpeg" });
+        select("btp");
+        chosen = [file];
+        renderFiles();
+        submit(chosen);
+      })
+      .catch(function (error) {
+        el.example.disabled = false;
+        el.example.textContent = "Essayer avec un exemple";
+        showError(el.uploadError, error.message);
+      });
+  });
+
+  fetch("/referentiels")
+    .then(function (response) { return response.json(); })
+    .then(renderReferentiels)
+    .catch(function () {
+      showError(el.uploadError, "Les référentiels n'ont pas pu être chargés. Rechargez la page.");
+    });
+}());
+</script>
+</body>
+</html>
