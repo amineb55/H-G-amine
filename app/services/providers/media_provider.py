@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from app.config import get_settings, redact
 from app.models.schemas import Finding, InspectionResult
+from app.services import inspection_prompt
 from app.services.inspection_prompt import PromptError, build_system_prompt
 
 logger = logging.getLogger(__name__)
@@ -182,6 +183,14 @@ def _parse(text: str) -> _AnalysisPayload:
         raise ValueError(f"response does not match the schema ({exc})") from exc
 
 
+class _DetectionPayload(BaseModel):
+    """What the detection pass returns."""
+
+    referentiel: str | None = Field(None, description="Sector key, or null.")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="How sure the pass is.")
+    justification: str = Field("", description="What was recognised, in French.")
+
+
 async def _cleanup(client: genai.Client, uploaded: list[types.File]) -> None:
     """Remove the media copies held by the provider."""
     for item in uploaded:
@@ -287,3 +296,79 @@ async def analyze(media_path: str, referentiel: str) -> dict:
         findings=payload.findings,
     )
     return result.model_dump(mode="json")
+
+
+async def detect_sector(media_path: str) -> dict:
+    """Recognise the environment shown in the media.
+
+    A deliberately small pass: it carries no rule catalog, asks for three
+    short fields, and samples video far more sparsely than the audit does,
+    because it only has to place the scene rather than inspect it.
+
+    Returns ``{"referentiel", "confidence", "justification"}``. The caller
+    decides what to do with a low score — this function never guesses a
+    sector to have something to audit.
+    """
+    settings = get_settings()
+    api_key = settings.analysis_engine_api_key
+    if not api_key:
+        raise AnalysisProviderError(
+            "The analysis engine is not configured: no API key is set."
+        )
+
+    model = settings.analysis_engine_model or DEFAULT_MODEL
+    try:
+        system_prompt = inspection_prompt.build_detection_prompt()
+    except PromptError as exc:
+        raise AnalysisProviderError(str(exc)) from exc
+
+    files = _collect_media(media_path)
+    client = _client(api_key, settings.analysis_engine_timeout_seconds)
+    uploaded: list[types.File] = []
+
+    try:
+        for path in files:
+            uploaded.append(await _upload(client, path))
+        parts = [_to_part(item, settings.detection_video_fps) for item in uploaded]
+
+        response = await client.aio.models.generate_content(
+            model=model,
+            contents=[types.Content(role="user", parts=parts)],
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                response_mime_type="application/json",
+                response_schema=_DetectionPayload,
+                temperature=0.0,
+            ),
+        )
+        _log_usage(response, model, attempt=0)
+
+        try:
+            payload = _DetectionPayload.model_validate(json.loads(response.text or ""))
+        except (json.JSONDecodeError, ValidationError) as exc:
+            raise AnalysisProviderError(
+                "The analysis engine could not identify the sector: its answer "
+                "was not readable."
+            ) from exc
+    except AnalysisProviderError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - translated, never leaked raw
+        logger.exception("Sector detection failed")
+        raise _as_readable_error(exc) from exc
+    finally:
+        await _cleanup(client, uploaded)
+
+    detected = (payload.referentiel or "").strip().lower() or None
+    if detected is not None and detected not in inspection_prompt.supported_referentiels():
+        # A sector we do not carry a catalog for is the same as none at all.
+        logger.info("Detection returned an unsupported sector: %s", detected)
+        detected = None
+
+    logger.info(
+        "Sector detection: %s (confidence %.2f)", detected or "none", payload.confidence
+    )
+    return {
+        "referentiel": detected,
+        "confidence": payload.confidence,
+        "justification": payload.justification.strip(),
+    }

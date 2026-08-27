@@ -31,6 +31,7 @@ from app.models.schemas import (
     InspectionAccepted,
     InspectionStage,
     InspectionState,
+    ReferentielChoice,
     InspectionStatus,
     Referentiel,
     ReviewResponse,
@@ -42,6 +43,7 @@ from app.services import (
     evidence,
     inspection_store,
     job_queue,
+    media_reaper,
     notification,
     report,
     storage,
@@ -145,7 +147,17 @@ async def lifespan(_: FastAPI):
                 "but evidence images will not be stored or served.",
                 reason,
             )
-    yield
+    # The hold on undetermined media is temporary: sweep it so nothing
+    # accumulates when a user never comes back to choose a sector.
+    reaper = asyncio.create_task(media_reaper.run_forever())
+    logger.info(
+        "Undetermined media is held for %.1f h, then deleted.",
+        settings.undetermined_media_ttl_hours,
+    )
+    try:
+        yield
+    finally:
+        reaper.cancel()
 
 
 app = FastAPI(
@@ -233,7 +245,9 @@ def _validate_upload(files: list[UploadFile]) -> None:
 )
 async def create_inspection(
     background_tasks: BackgroundTasks,
-    referentiel: Referentiel = Form(..., description="Referential to apply."),
+    referentiel: Referentiel | None = Form(
+        None, description="Referential to apply. Omitted, the sector is detected."
+    ),
     files: list[UploadFile] = File(..., description="One video, or up to ten images."),
 ) -> InspectionAccepted:
     """Accept inspection media and queue it for AI-assisted analysis."""
@@ -258,14 +272,14 @@ async def create_inspection(
         {
             "status": InspectionStatus.PROCESSING,
             "stage": InspectionStage.RECEPTION,
-            "referentiel": referentiel.value,
+            "referentiel": referentiel.value if referentiel else None,
             "result": None,
             "error": None,
         },
     )
 
     job_queue.get_queue(background_tasks).enqueue(
-        run_inspection, inspection_id, referentiel.value
+        run_inspection, inspection_id, referentiel.value if referentiel else None
     )
 
     return InspectionAccepted(
@@ -284,6 +298,8 @@ async def read_inspection(inspection_id: str) -> InspectionState:
     return InspectionState(
         status=record["status"],
         stage=record.get("stage"),
+        detection=record.get("detection"),
+        media_retained=bool(record.get("media_retained")),
         result=record["result"],
         error=record["error"],
     )
@@ -345,6 +361,8 @@ async def _set_validation(
         inspection_id=inspection_id,
         status=record["status"],
         referentiel_label=_label_for(record, result),
+        detection=record.get("detection"),
+        media_retained=bool(record.get("media_retained")),
         result=result,
         summary=assignment.summarize(result),
         error=record.get("error"),
@@ -359,6 +377,8 @@ async def review_inspection(inspection_id: str) -> ReviewResponse:
         inspection_id=inspection_id,
         status=record["status"],
         referentiel_label=_label_for(record, result),
+        detection=record.get("detection"),
+        media_retained=bool(record.get("media_retained")),
         result=result,
         summary=assignment.summarize(result),
         error=record.get("error"),
@@ -502,7 +522,10 @@ async def edit_finding(inspection_id: str, index: int, edit: FindingEdit) -> Rev
 
     return ReviewResponse(
         inspection_id=inspection_id, status=record["status"],
-        referentiel_label=_label_for(record, result), result=result,
+        referentiel_label=_label_for(record, result),
+        detection=record.get("detection"),
+        media_retained=bool(record.get("media_retained")),
+        result=result,
         summary=assignment.summarize(result), error=record.get("error"),
     )
 
@@ -530,7 +553,10 @@ async def add_finding(inspection_id: str, manual: ManualFinding) -> ReviewRespon
 
     return ReviewResponse(
         inspection_id=inspection_id, status=record["status"],
-        referentiel_label=_label_for(record, result), result=result,
+        referentiel_label=_label_for(record, result),
+        detection=record.get("detection"),
+        media_retained=bool(record.get("media_retained")),
+        result=result,
         summary=assignment.summarize(result), error=record.get("error"),
     )
 
@@ -598,3 +624,48 @@ async def landing_page() -> FileResponse:
             status_code=status.HTTP_404_NOT_FOUND, detail="Landing page not available."
         )
     return FileResponse(LANDING_PAGE, media_type="text/html")
+
+
+@app.post(
+    "/inspections/{inspection_id}/referentiel",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=InspectionAccepted,
+)
+async def choose_referentiel(
+    inspection_id: str, choice: ReferentielChoice, background_tasks: BackgroundTasks
+) -> InspectionAccepted:
+    """Audit an inspection against a referential the auditor picked.
+
+    Only available while the media is still held — which is the case when the
+    sector could not be determined. Once an audit has run the media is gone,
+    and a different referential means a new upload.
+    """
+    record = await inspection_store.get(inspection_id)
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Unknown inspection."
+        )
+    if not record.get("media_retained"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Le média de cette inspection n'est plus disponible : il est "
+                "supprimé dès qu'un audit a été lancé. Relancez une analyse "
+                "avec un nouveau téléversement."
+            ),
+        )
+
+    await inspection_store.update(
+        inspection_id,
+        status=InspectionStatus.PROCESSING,
+        stage=InspectionStage.RECEPTION,
+        referentiel=choice.referentiel.value,
+        result=None,
+        error=None,
+    )
+    job_queue.get_queue(background_tasks).enqueue(
+        run_inspection, inspection_id, choice.referentiel.value
+    )
+    return InspectionAccepted(
+        inspection_id=inspection_id, status=InspectionStatus.PROCESSING
+    )

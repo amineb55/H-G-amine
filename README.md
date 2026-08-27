@@ -105,6 +105,49 @@ carry `requires_review: true`. That flag is shown in the review screen so the
 auditor knows the finding is low-confidence, but it does not block dispatch:
 approving is the human act that resolves the doubt.
 
+## Sector detection
+
+`POST /inspections` takes an optional `referentiel`. Supplied, it is used as
+given — existing API callers are unaffected. Omitted, the agent works out the
+sector itself, which is what the landing page does.
+
+Detection is a **separate first pass**, deliberately small: it carries the
+catalogs' key, label and description but none of their rules — it has to
+recognise an environment, not audit it — and it samples video at
+`DETECTION_VIDEO_FPS` (0.1) rather than the audit's 1 fps. It returns the
+sector, a confidence score, and one French sentence naming what it
+recognised. That justification is shown on the review screen.
+
+Two calls rather than one because the audit prompt cannot be built until the
+catalog is known; folding both into a single call would mean shipping every
+sector's rules on every request and trusting the model not to mix them.
+
+**Nothing is audited on a guess.** Below `DETECTION_MIN_CONFIDENCE` (0.7), or
+when the scene matches no catalog, the job stops before the audit: the
+inspection comes back with `scene_valid: false`, no findings, and an
+explanation inviting the auditor to pick a sector. Auditing against the wrong
+sector's rules would produce findings that do not apply, which is worse than
+declining.
+
+### Media retention around an undetermined sector
+
+The retention rule is not "retain nothing"; it is "retain only what documents
+a finding, once the audit is done". Media whose audit has not happened has not
+finished its lifecycle, so an inspection left undetermined keeps its media —
+and only then:
+
+- **Any audit consumes the media.** One exit path: whether it succeeds or
+  fails, the media is deleted. No branch leaves it behind after an audit.
+- **The hold expires.** `UNDETERMINED_MEDIA_TTL_HOURS` (6) bounds it, and a
+  sweep in `app/services/media_reaper.py` deletes what has expired, so held
+  media cannot accumulate.
+- **The hold is stated.** The review screen says the media is being kept
+  temporarily pending the choice, and when it goes. A silent exception would
+  break the promise even where it is technically justified.
+
+`POST /inspections/{id}/referentiel` audits a held inspection against a chosen
+catalog. Once the media is gone it answers `409` and asks for a new upload.
+
 ## Auditor corrections
 
 Approving or rejecting is not the only thing an auditor can do: the analysis

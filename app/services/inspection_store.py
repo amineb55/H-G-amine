@@ -152,6 +152,16 @@ def _update_sync(inspection_id: str, changes: dict[str, Any]) -> dict[str, Any] 
     return record
 
 
+def _list_retained_sync() -> list[tuple[str, dict[str, Any]]]:
+    try:
+        query = _collection().where("media_retained", "==", True)
+        return [(doc.id, doc.to_dict() or {}) for doc in query.stream(timeout=_deadline())]
+    except StoreError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise _as_store_error(exc, "list the inspections holding media") from exc
+
+
 def _clear_sync() -> None:
     try:
         for document in _collection().list_documents(timeout=_deadline()):
@@ -212,6 +222,18 @@ async def update(inspection_id: str, **changes: Any) -> dict[str, Any] | None:
             record.update(_encode(changes))
             return dict(record)
     return await _run("update this inspection", _update_sync, inspection_id, changes)
+
+
+async def list_retained() -> list[tuple[str, dict[str, Any]]]:
+    """Inspections still holding their media, pending a sector choice."""
+    if backend() == MEMORY_BACKEND:
+        with _LOCK:
+            return [
+                (key, dict(record))
+                for key, record in _RECORDS.items()
+                if record.get("media_retained")
+            ]
+    return await _run("list the inspections holding media", _list_retained_sync)
 
 
 async def clear() -> None:

@@ -67,9 +67,23 @@ class InspectionStage(str, Enum):
     """
 
     RECEPTION = "reception"
+    DETECTION = "detection"
     ANALYSE = "analyse"
     ASSIGNATION = "assignation"
     TERMINE = "termine"
+
+
+class SectorDetection(BaseModel):
+    """What the first pass recognised in the media."""
+
+    referentiel: str | None = Field(
+        None, description="Referential detected, when one could be determined."
+    )
+    confidence: float = Field(0.0, ge=0.0, le=1.0, description="How sure the pass is.")
+    justification: str = Field("", description="What was recognised, in French.")
+    determined: bool = Field(
+        False, description="Whether the sector was determined with enough confidence."
+    )
 
 
 class InspectionStatus(str, Enum):
@@ -117,6 +131,12 @@ class InspectionState(BaseModel):
     status: InspectionStatus = Field(..., description="Lifecycle status of the inspection.")
     stage: InspectionStage | None = Field(
         None, description="How far the job has got. Only observed transitions."
+    )
+    detection: SectorDetection | None = Field(
+        None, description="Outcome of the sector detection pass, when it ran."
+    )
+    media_retained: bool = Field(
+        False, description="Whether the media is still held, pending a sector choice."
     )
     result: "EnrichedInspectionResult | None" = Field(
         None, description="Analysis result, once the inspection is done."
@@ -204,6 +224,12 @@ class ReviewResponse(BaseModel):
     status: InspectionStatus = Field(..., description="Lifecycle status of the inspection.")
     referentiel_label: str | None = Field(
         None, description="Human name of the referential, for display."
+    )
+    detection: SectorDetection | None = Field(
+        None, description="Outcome of the sector detection pass, when it ran."
+    )
+    media_retained: bool = Field(
+        False, description="Whether the media is still held, pending a sector choice."
     )
     result: EnrichedInspectionResult | None = Field(
         None, description="Enriched result, once the inspection is done."
@@ -303,3 +329,9 @@ class DispatchRequest(BaseModel):
             if address not in cleaned:
                 cleaned.append(address)
         return cleaned
+
+
+class ReferentielChoice(BaseModel):
+    """An auditor picking the referential to audit against."""
+
+    referentiel: Referentiel = Field(..., description="Referential to apply.")

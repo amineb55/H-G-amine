@@ -58,6 +58,14 @@ class Settings(BaseSettings):
 
     # Frames sampled per second of video. Lower means cheaper.
     analysis_engine_video_fps: float = 1.0
+    # The detection pass only has to recognise the environment, so it samples
+    # far fewer frames than the audit.
+    detection_video_fps: float = 0.1
+    # Below this, the sector is treated as undetermined and nothing is audited.
+    detection_min_confidence: float = 0.7
+    # Media kept for an undetermined inspection is deleted after this long,
+    # so nothing accumulates when the user never comes back to choose.
+    undetermined_media_ttl_hours: float = 6.0
 
     # Email notifications. The Python names stay provider-neutral; only the
     # environment variable names below are provider-specific.

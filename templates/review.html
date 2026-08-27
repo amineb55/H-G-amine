@@ -26,6 +26,11 @@
     --radius: 8px;
   }
   * { box-sizing: border-box; }
+  /* Une règle de classe qui pose display: flex l'emporte sur le display:none
+     que le navigateur applique à [hidden] : sans ceci, masquer un élément par
+     l'attribut hidden reste sans effet. */
+  [hidden] { display: none !important; }
+
   body {
     margin: 0;
     background: var(--bg);
@@ -177,6 +182,23 @@
     text-decoration: none; display: inline-block;
   }
   a.button:hover { background: #f0f2f4; }
+  .scope-title { font-weight: 600; margin-bottom: 4px; }
+  .chooser { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .chooser-label { font-size: 13px; color: var(--ink-soft); margin-bottom: 8px; }
+  .detected {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px; margin-bottom: 16px;
+  }
+  .detected-k {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--ink-faint); margin-right: 8px;
+  }
+  .detected-v { font-size: 14px; font-weight: 600; }
+  .detected-j { font-size: 13px; color: var(--ink-soft); margin-top: 4px; }
+  .scope-detected {
+    margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+    font-size: 13px; color: var(--ink-faint);
+  }
   .notice { padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); }
   .notice.error { background: var(--arret-bg); border-color: #f3c6c2; color: var(--arret); }
   pre.result {
@@ -267,7 +289,7 @@
     ["arret_immediat", "Arrêt immédiat"], ["critique", "Critique"],
     ["majeur", "Majeur"], ["mineur", "Mineur"]
   ];
-  var options = { rules: [], roles: [] };
+  var options = { rules: [], roles: [], referentiels: [] };
   var editing = null;   // index du constat en cours d'édition
 
   function select(name, choices, current) {
@@ -578,6 +600,56 @@
     el.empty.appendChild(node("div", "notice error", error.message || String(error)));
   }
 
+  function undeterminedPanel(payload) {
+    var box = node("div", "notice");
+    box.appendChild(node("div", "scope-title", "Secteur indéterminé"));
+    box.appendChild(node("div", null,
+      "Le secteur n'a pas pu être déterminé avec certitude à partir du média. " +
+      "Aucun audit n'a été lancé : auditer avec les règles d'un mauvais secteur " +
+      "produirait des constats qui ne s'appliquent pas."));
+    var detection = payload.detection || {};
+    if (detection.justification) {
+      box.appendChild(node("div", "scope-detected",
+        "Reconnu dans le média : " + detection.justification +
+        " (confiance " + Math.round((detection.confidence || 0) * 100) + " %)"));
+    }
+    if (payload.media_retained) {
+      box.appendChild(node("div", "scope-detected",
+        "Le média est conservé temporairement, le temps que vous choisissiez un " +
+        "secteur. Il sera supprimé dès qu'une analyse aura été lancée, ou " +
+        "automatiquement passé ce délai."));
+      box.appendChild(sectorChooser());
+    } else {
+      box.appendChild(node("div", "scope-detected",
+        "Le média n'est plus disponible : relancez une analyse avec un nouveau " +
+        "téléversement."));
+    }
+    return box;
+  }
+
+  function sectorChooser() {
+    var wrap = node("div", "chooser");
+    wrap.appendChild(node("div", "chooser-label", "Lancer l'audit avec le référentiel :"));
+    var row = node("div", "actions");
+    (options.referentiels || []).forEach(function (entry) {
+      var pick = node("button", null, entry.label);
+      pick.type = "button";
+      pick.addEventListener("click", function () {
+        setBusy(true);
+        request(base + "/referentiel", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ referentiel: entry.key })
+        }).then(function () { window.location.reload(); })
+          .catch(showError)
+          .then(function () { setBusy(false); });
+      });
+      row.appendChild(pick);
+    });
+    wrap.appendChild(row);
+    return wrap;
+  }
+
   function formatCaptured(raw) {
     var d = new Date(raw);
     if (isNaN(d.getTime())) { return raw; }
@@ -586,8 +658,24 @@
       " à " + pad(d.getHours()) + ":" + pad(d.getMinutes());
   }
 
+  function loadReferentiels() {
+    if (options.referentiels.length) { return; }
+    fetch("/referentiels")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (list) {
+        if (!list) { return; }
+        options.referentiels = list;
+        // La liste peut arriver après le rendu : on ne redessine que s'il y a
+        // déjà un état, sinon le rendu initial s'en chargera.
+        if (state) { render(state); }
+      })
+      .catch(function () { /* le choix manuel reste possible via l'API */ });
+  }
+
   function loadOptions(referentiel) {
-    if (options.rules.length) { return; }
+    // Une inspection au secteur indéterminé n'a pas de référentiel : il n'y a
+    // pas de catalogue de règles à charger.
+    if (!referentiel || options.rules.length) { return; }
     fetch("/referentiels/" + encodeURIComponent(referentiel) + "/options")
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (payload) { if (payload) { options = payload; } })
@@ -609,6 +697,7 @@
   }
 
   function render(payload) {
+    if (!payload) { return; }
     state = payload;
     el.id.textContent = payload.inspection_id;
     el.findings.textContent = "";
@@ -616,6 +705,22 @@
     el.dispatchResult.hidden = true;
 
     var result = payload.result;
+    // Une analyse relancée depuis cet écran repasse par "processing" : on
+    // suit son avancement plutôt que de demander un rechargement manuel.
+    if (payload.status === "processing") {
+      el.toolbar.hidden = true;
+      el.metaRest.textContent = " · analyse en cours";
+      el.summary.textContent = "";
+      el.findings.textContent = "";
+      el.bar.hidden = true;
+      el.empty.appendChild(node("div", "notice",
+        "Analyse en cours avec le référentiel choisi. Cet écran se met à jour " +
+        "automatiquement."));
+      window.setTimeout(function () {
+        request(base + "/review").then(render).catch(showError);
+      }, 2000);
+      return;
+    }
     if (!result) {
       el.toolbar.hidden = true;
       el.metaRest.textContent = " · " + payload.status;
@@ -635,14 +740,30 @@
     el.toolbar.hidden = false;
     el.pdfLink.href = base + "/report.pdf";
     loadOptions(result.referentiel);
+    if (payload.detection && payload.detection.determined && payload.detection.justification) {
+      var det = node("div", "detected");
+      det.appendChild(node("span", "detected-k", "Secteur détecté"));
+      det.appendChild(node("span", "detected-v",
+        (payload.referentiel_label || result.referentiel) +
+        " · confiance " + Math.round((payload.detection.confidence || 0) * 100) + " %"));
+      det.appendChild(node("div", "detected-j", payload.detection.justification));
+      el.empty.appendChild(det);
+    }
     renderSummary(payload.summary, result);
 
     if (!result.scene_valid) {
-      el.empty.appendChild(node("div", "notice",
-        "La scène ne correspond pas au référentiel « " +
-        (payload.referentiel_label || result.referentiel) +
-        " » : aucun constat n'a été relevé. Refaites la prise de vue ou " +
-        "sélectionnez le bon référentiel."));
+      // Secteur indéterminé : ce n'est pas une panne mais un refus délibéré
+      // d'auditer avec les règles d'un secteur non établi.
+      if (payload.detection && !payload.detection.determined) {
+        // Rien n'a été audité : ni rapport à produire, ni constat à ajouter.
+        el.toolbar.hidden = true;
+        el.empty.appendChild(undeterminedPanel(payload));
+      } else {
+        el.empty.appendChild(node("div", "notice",
+          "La scène ne correspond pas au référentiel « " +
+          (payload.referentiel_label || result.referentiel) +
+          " » : aucun constat n'a été relevé. Refaites la prise de vue."));
+      }
       el.bar.hidden = true;
       return;
     }
@@ -733,6 +854,7 @@
       .then(function () { setBusy(false); });
   });
 
+  loadReferentiels();
   request(base + "/review").then(render).catch(showError);
 }());
 </script>

@@ -29,6 +29,11 @@
     --radius: 10px;
   }
   * { box-sizing: border-box; }
+  /* Une règle de classe qui pose display: flex l'emporte sur le display:none
+     que le navigateur applique à [hidden] : sans ceci, masquer un élément par
+     l'attribut hidden reste sans effet. */
+  [hidden] { display: none !important; }
+
   html, body { margin: 0; padding: 0; }
   body {
     background: var(--bg);
@@ -76,30 +81,6 @@
   h2 {
     font-size: 12px; font-weight: 600; text-transform: uppercase;
     letter-spacing: 0.07em; color: var(--ink-faint); margin: 0 0 14px;
-  }
-
-  .referentiels { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
-  .ref {
-    position: relative;
-    background: var(--surface); border: 1.5px solid var(--border);
-    border-radius: var(--radius); padding: 20px 52px 20px 20px; cursor: pointer;
-    text-align: left; font: inherit; color: var(--ink); width: 100%;
-  }
-  .ref:hover { border-color: var(--border-strong); }
-  .ref[aria-pressed="true"] {
-    border-color: var(--valid-border); background: var(--valid-tint);
-  }
-  .ref .name { font-size: 17px; font-weight: 600; margin-bottom: 3px; }
-  .ref .desc { font-size: 13.5px; color: var(--ink-soft); }
-  .ref .check {
-    position: absolute; top: 18px; right: 18px;
-    width: 22px; height: 22px; border-radius: 50%;
-    border: 1.5px solid var(--border-strong); background: var(--surface);
-    display: flex; align-items: center; justify-content: center;
-    color: transparent;
-  }
-  .ref[aria-pressed="true"] .check {
-    background: var(--valid); border-color: var(--valid); color: #fff;
   }
 
   .drop {
@@ -210,7 +191,34 @@
   }
   @media (max-width: 600px) {
     main { padding: 26px 16px 56px; }
-    .drop { padding: 32px 16px; }
+    .judges {
+    padding: 18px 20px; border-radius: var(--radius);
+    background: #f2f4f3; border: 1px solid var(--border);
+  }
+  .judges-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .judges p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+  #manual-panel { margin-top: 26px; }
+  #manual-panel h2 { margin-bottom: 6px; }
+  .manual-hint { margin: 0 0 14px; font-size: 13.5px; color: var(--ink-soft); }
+  .referentiels { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .ref {
+    position: relative;
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 20px 52px 20px 20px; cursor: pointer;
+    text-align: left; font: inherit; color: var(--ink); width: 100%;
+  }
+  .ref:hover { border-color: var(--border-strong); }
+  .ref[aria-pressed="true"] { border-color: var(--valid-border); background: var(--valid-tint); }
+  .ref .name { font-size: 17px; font-weight: 600; margin-bottom: 3px; }
+  .ref .desc { font-size: 13.5px; color: var(--ink-soft); }
+  .ref .check {
+    position: absolute; top: 18px; right: 18px;
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 1.5px solid var(--border-strong); background: var(--surface);
+    display: flex; align-items: center; justify-content: center; color: transparent;
+  }
+  .ref[aria-pressed="true"] .check { background: var(--valid); border-color: var(--valid); color: #fff; }
+  .drop { padding: 32px 16px; }
   }
 </style>
 </head>
@@ -241,11 +249,6 @@
 </header>
 
 <main>
-  <section id="setup">
-    <h2>Référentiel</h2>
-    <div class="referentiels" id="referentiels"></div>
-  </section>
-
   <section id="upload-section">
     <h2>Média de la visite</h2>
     <div class="drop" id="drop" tabindex="0" role="button"
@@ -268,6 +271,14 @@
     <div class="actions">
       <button type="button" class="primary" id="submit" disabled>Lancer l'analyse</button>
       <button type="button" class="example" id="example">Essayer avec un exemple</button>
+      <button type="button" class="example" id="manual">Choisir le secteur manuellement</button>
+    </div>
+    <div id="manual-panel" hidden>
+      <h2>Secteur</h2>
+      <p class="manual-hint">Par défaut, l'agent identifie le secteur à partir du
+        média. Vous pouvez l'imposer ici.</p>
+      <div class="referentiels" id="referentiels"></div>
+      <button type="button" class="example" id="manual-clear">Revenir à la détection automatique</button>
     </div>
     <div id="upload-error"></div>
   </section>
@@ -307,6 +318,17 @@
     </div>
   </section>
 
+  <section>
+    <div class="judges">
+      <div class="judges-title">Périmètre de la démonstration</div>
+      <p>Cette démonstration couvre deux secteurs : bureaux et administrations, et
+        chantiers BTP. Les référentiels sont des fichiers de configuration : ajouter
+        un secteur ne demande aucune modification du code. Les autres secteurs
+        (industrie, santé, logistique, transport, restauration) sont rédigés mais
+        non validés sur le terrain, et volontairement hors périmètre.</p>
+    </div>
+  </section>
+
   <footer class="disclaimer">
     Analyse assistée par IA — validation humaine requise.
   </footer>
@@ -334,14 +356,12 @@
   var ORDER = ["reception", "analyse", "assignation", "termine"];
 
   var el = {
-    referentiels: document.getElementById("referentiels"),
     drop: document.getElementById("drop"),
     picker: document.getElementById("picker"),
     files: document.getElementById("files"),
     submit: document.getElementById("submit"),
     example: document.getElementById("example"),
     uploadError: document.getElementById("upload-error"),
-    setup: document.getElementById("setup"),
     uploadSection: document.getElementById("upload-section"),
     progressSection: document.getElementById("progress-section"),
     progressTitle: document.getElementById("progress-title"),
@@ -350,10 +370,17 @@
     elapsed: document.getElementById("elapsed"),
     progressError: document.getElementById("progress-error"),
     dossier: document.getElementById("dossier"),
-    dossierRef: document.getElementById("dossier-ref")
+    dossierRef: document.getElementById("dossier-ref"),
+    manual: document.getElementById("manual"),
+    manualPanel: document.getElementById("manual-panel"),
+    manualClear: document.getElementById("manual-clear"),
+    referentiels: document.getElementById("referentiels")
   };
 
+  // Null tant que l'auditeur n'impose rien : l'agent détecte alors le secteur.
   var referentiel = null;
+  var loadedReferentiels = false;
+
   var chosen = [];
   var timer = null;
   var startedAt = 0;
@@ -376,7 +403,7 @@
     return (bytes / (1024 * 1024)).toFixed(1) + " Mo";
   }
 
-  // --- référentiels -------------------------------------------------------
+  // --- secteur imposé (facultatif) ---------------------------------------
 
   function renderReferentiels(entries) {
     el.referentiels.textContent = "";
@@ -390,24 +417,39 @@
         'stroke="currentColor" stroke-width="3.4" stroke-linecap="round" ' +
         'stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
       card.appendChild(check);
-      card.addEventListener("click", function () { select(entry.key); });
       card.dataset.key = entry.key;
       card.setAttribute("aria-pressed", "false");
+      card.addEventListener("click", function () { select(entry.key); });
       el.referentiels.appendChild(card);
     });
-    // Sélection après la boucle : appelée pendant, elle ne verrait que les
-    // cartes déjà insérées et laisserait les suivantes sans état annoncé.
-    if (entries.length) { select(entries[0].key); }
   }
 
   function select(key) {
     referentiel = key;
     var cards = el.referentiels.querySelectorAll(".ref");
     for (var i = 0; i < cards.length; i++) {
-      var active = cards[i].dataset.key === key;
-      cards[i].setAttribute("aria-pressed", active ? "true" : "false");
+      cards[i].setAttribute("aria-pressed", cards[i].dataset.key === key ? "true" : "false");
     }
-    refreshSubmit();
+    el.manualClear.hidden = false;
+  }
+
+  function clearSelection() {
+    referentiel = null;
+    var cards = el.referentiels.querySelectorAll(".ref");
+    for (var i = 0; i < cards.length; i++) { cards[i].setAttribute("aria-pressed", "false"); }
+    el.manualClear.hidden = true;
+  }
+
+  function loadReferentiels() {
+    if (loadedReferentiels) { return; }
+    loadedReferentiels = true;
+    fetch("/referentiels")
+      .then(function (response) { return response.json(); })
+      .then(renderReferentiels)
+      .catch(function () {
+        loadedReferentiels = false;
+        showError(el.uploadError, "Les secteurs n'ont pas pu être chargés.");
+      });
   }
 
   // --- fichiers -----------------------------------------------------------
@@ -465,7 +507,7 @@
   }
 
   function refreshSubmit() {
-    el.submit.disabled = !(referentiel && chosen.length > 0);
+    el.submit.disabled = chosen.length === 0;
   }
 
   // --- envoi --------------------------------------------------------------
@@ -474,8 +516,10 @@
     var problem = validate(files);
     if (problem) { showError(el.uploadError, problem); return; }
 
+    // Le secteur n'est envoyé que si l'auditeur l'a imposé ; sinon l'agent
+    // le détermine lui-même à partir du média.
     var form = new FormData();
-    form.append("referentiel", referentiel);
+    if (referentiel) { form.append("referentiel", referentiel); }
     files.forEach(function (file) { form.append("files", file, file.name); });
 
     el.submit.disabled = true;
@@ -515,7 +559,6 @@
     // La référence de dossier n'existe qu'une fois l'inspection créée.
     el.dossierRef.textContent = id;
     el.dossier.hidden = false;
-    el.setup.hidden = true;
     el.uploadSection.hidden = true;
     el.progressSection.hidden = false;
     startedAt = Date.now();
@@ -621,6 +664,15 @@
   });
   el.submit.addEventListener("click", function () { submit(chosen); });
 
+  el.manual.addEventListener("click", function () {
+    var opening = el.manualPanel.hidden;
+    el.manualPanel.hidden = !opening;
+    el.manual.textContent = opening
+      ? "Masquer le choix manuel" : "Choisir le secteur manuellement";
+    if (opening) { loadReferentiels(); }
+  });
+  el.manualClear.addEventListener("click", clearSelection);
+
   el.example.addEventListener("click", function () {
     el.example.disabled = true;
     el.example.textContent = "Chargement de l'exemple…";
@@ -631,7 +683,6 @@
       })
       .then(function (blob) {
         var file = new File([blob], "chantier-exemple.jpg", { type: "image/jpeg" });
-        select("btp");
         chosen = [file];
         renderFiles();
         submit(chosen);
@@ -643,12 +694,6 @@
       });
   });
 
-  fetch("/referentiels")
-    .then(function (response) { return response.json(); })
-    .then(renderReferentiels)
-    .catch(function () {
-      showError(el.uploadError, "Les référentiels n'ont pas pu être chargés. Rechargez la page.");
-    });
 }());
 </script>
 </body>

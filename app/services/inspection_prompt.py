@@ -18,9 +18,14 @@ logger = logging.getLogger(__name__)
 
 RULES_DIR = Path(__file__).resolve().parent.parent / "rules"
 PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "inspection.txt"
+DETECTION_PATH = Path(__file__).resolve().parent.parent / "prompts" / "detection.txt"
 
 REFERENTIEL_TOKEN = "{{REFERENTIEL}}"
 RULES_TOKEN = "{{RULES}}"
+SECTORS_TOKEN = "{{SECTORS}}"
+
+# Returned when the media shows a sector the demonstration does not cover.
+UNSUPPORTED = "autre"
 
 
 class PromptError(Exception):
@@ -94,6 +99,8 @@ def referentiel_label(referentiel: str) -> str:
     Falls back to the raw key rather than failing: a report is still worth
     producing when a catalog is missing its label.
     """
+    if referentiel == UNSUPPORTED:
+        return "Secteur non couvert"
     try:
         return load_catalog(referentiel).label
     except PromptError:
@@ -132,8 +139,30 @@ def _load_template() -> str:
         raise PromptError(f"Prompt template not found at {PROMPT_PATH}.") from exc
 
 
+@lru_cache
+def _load_detection() -> str:
+    """Load the sector detection instructions."""
+    try:
+        return DETECTION_PATH.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise PromptError(f"Detection template not found at {DETECTION_PATH}.") from exc
+
+
+def supported_referentiels() -> list[str]:
+    """The sectors the demonstration actually covers."""
+    return [item.value for item in Referentiel]
+
+
+def rule_ids(referentiel: str) -> set[str]:
+    """Rule identifiers belonging to a referential, for checking a response."""
+    try:
+        return {rule.id for rule in load_catalog(referentiel).rules}
+    except PromptError:
+        return set()
+
+
 def build_system_prompt(referentiel: str) -> str:
-    """Build the system prompt for a referential, catalog included."""
+    """Build the audit prompt for a referential, catalog included."""
     catalog = load_catalog(referentiel)
     template = _load_template()
 
@@ -144,3 +173,25 @@ def build_system_prompt(referentiel: str) -> str:
     return template.replace(REFERENTIEL_TOKEN, catalog.referentiel.value).replace(
         RULES_TOKEN, render_rules(catalog)
     )
+
+
+def build_detection_prompt() -> str:
+    """Build the prompt of the sector detection pass.
+
+    Carries only what the catalogs declare about themselves — key, label and
+    description — never their rules: the pass recognises an environment
+    rather than auditing it, and shipping every rule to classify a photo
+    would be paying for context nobody reads.
+    """
+    template = _load_detection()
+    if SECTORS_TOKEN not in template:
+        raise PromptError(f"Detection template is missing the {SECTORS_TOKEN} placeholder.")
+
+    entries = []
+    for name in supported_referentiels():
+        catalog = load_catalog(name)
+        entry = f'- "{name}" : {catalog.label}'
+        if catalog.description:
+            entry += f" — {catalog.description}"
+        entries.append(entry)
+    return template.replace(SECTORS_TOKEN, "\n".join(entries))
