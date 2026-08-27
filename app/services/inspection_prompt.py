@@ -42,6 +42,7 @@ class RuleCatalog(BaseModel):
 
     referentiel: Referentiel = Field(..., description="Referential these rules belong to.")
     label: str = Field(..., min_length=1, description="Human name shown to readers.")
+    description: str = Field("", description="One line describing what the referential covers.")
     rules: list[Rule] = Field(..., min_length=1, description="Rules to audit against.")
 
 
@@ -98,6 +99,14 @@ def referentiel_label(referentiel: str) -> str:
     except PromptError:
         logger.warning("No catalog for referential '%s'; showing the raw key", referentiel)
         return referentiel
+
+
+def referentiel_description(referentiel: str) -> str:
+    """One line describing what a referential covers, for the entry page."""
+    try:
+        return load_catalog(referentiel).description
+    except PromptError:
+        return ""
 
 
 def render_rules(catalog: RuleCatalog) -> str:

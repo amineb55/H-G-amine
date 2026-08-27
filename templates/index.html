@@ -15,6 +15,13 @@
     --ink-soft: #55606f;
     --ink-faint: #8b939e;
     --slate: #1e293b;
+    --header: #1e2d29;          /* vert-ardoise foncé, 14.4:1 avec du blanc */
+    --header-soft: #9fb3ab;
+    --valid: #15803d;           /* validation — distinct des quatre gravités */
+    --valid-tint: #f2f8f4;
+    --valid-border: #bfdccb;
+    --cta: #d97706;             /* accent chaud, texte ardoise : 4.59:1 */
+    --cta-hover: #c26a05;
     --arret: #b3261e;
     --critique: #c2410c;
     --majeur: #a16207;
@@ -30,10 +37,39 @@
     font-weight: 400;
   }
 
-  header.bar { background: var(--slate); color: #fff; padding: 22px 20px; }
-  header.bar .inner { max-width: 940px; margin: 0 auto; }
-  header.bar h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em; }
-  header.bar p { margin: 0; font-size: 15px; color: #c8cfd9; }
+  header.bar { background: var(--header); color: #fff; padding: 20px 20px 22px; }
+  header.bar .inner {
+    max-width: 940px; margin: 0 auto;
+    display: flex; align-items: flex-start; gap: 18px;
+  }
+  header.bar .brand { flex: 1; min-width: 0; }
+  header.bar .title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+  header.bar h1 { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  .pill {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12); color: #d7e3dd;
+    border: 1px solid rgba(255, 255, 255, 0.18); white-space: nowrap;
+  }
+  header.bar p { margin: 0; font-size: 15px; color: var(--header-soft); }
+  header.bar .aside {
+    display: flex; align-items: center; gap: 14px; flex: none; padding-top: 2px;
+  }
+  .dossier { text-align: right; line-height: 1.35; }
+  .dossier .k {
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: #7f958c; display: block;
+  }
+  .dossier .v {
+    font-size: 12px; color: #c3d2cb;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%; flex: none;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    display: flex; align-items: center; justify-content: center; color: #a9bfb6;
+  }
 
   main { max-width: 940px; margin: 0 auto; padding: 36px 20px 72px; }
   section { margin-bottom: 40px; }
@@ -44,17 +80,27 @@
 
   .referentiels { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
   .ref {
+    position: relative;
     background: var(--surface); border: 1.5px solid var(--border);
-    border-radius: var(--radius); padding: 22px 20px; cursor: pointer;
+    border-radius: var(--radius); padding: 20px 52px 20px 20px; cursor: pointer;
     text-align: left; font: inherit; color: var(--ink); width: 100%;
   }
   .ref:hover { border-color: var(--border-strong); }
   .ref[aria-pressed="true"] {
-    border-color: var(--slate); box-shadow: inset 0 0 0 1px var(--slate);
+    border-color: var(--valid-border); background: var(--valid-tint);
   }
   .ref .name { font-size: 17px; font-weight: 600; margin-bottom: 3px; }
-  .ref .state { font-size: 13px; color: var(--ink-faint); }
-  .ref[aria-pressed="true"] .state { color: var(--slate); font-weight: 600; }
+  .ref .desc { font-size: 13.5px; color: var(--ink-soft); }
+  .ref .check {
+    position: absolute; top: 18px; right: 18px;
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 1.5px solid var(--border-strong); background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    color: transparent;
+  }
+  .ref[aria-pressed="true"] .check {
+    background: var(--valid); border-color: var(--valid); color: #fff;
+  }
 
   .drop {
     background: var(--surface); border: 2px dashed var(--border-strong);
@@ -62,9 +108,11 @@
     cursor: pointer;
   }
   .drop.over { border-color: var(--slate); background: #f4f4f2; }
-  .drop .headline { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+  .drop .glyph { color: var(--ink-faint); margin-bottom: 14px; }
+  .drop.over .glyph { color: var(--header); }
+  .drop .headline { font-size: 19px; font-weight: 600; margin-bottom: 6px; }
   .drop .hint { font-size: 14px; color: var(--ink-soft); }
-  .drop .limits { font-size: 13px; color: var(--ink-faint); margin-top: 10px; }
+  .drop .limits { font-size: 13px; color: var(--ink-faint); margin-top: 12px; }
 
   .files { list-style: none; margin: 16px 0 0; padding: 0; }
   .files li {
@@ -83,26 +131,38 @@
   button:hover:not(:disabled) { background: #f1f1ef; }
   button:disabled { opacity: 0.45; cursor: default; }
   button.primary {
-    background: var(--slate); border-color: var(--slate); color: #fff; font-weight: 600;
+    background: var(--cta); border-color: var(--cta); color: var(--slate);
+    font-weight: 700; padding: 13px 26px;
   }
-  button.primary:hover:not(:disabled) { background: #2c3a4d; }
+  button.primary:hover:not(:disabled) { background: var(--cta-hover); border-color: var(--cta-hover); }
+  /* Désactivé : un aplat neutre plutôt qu'un ambre délavé, qui rendait le
+     libellé difficile à lire. */
+  button.primary:disabled {
+    background: #ecebe8; border-color: #ecebe8; color: #94918c; opacity: 1;
+  }
   button.remove {
     padding: 4px 10px; font-size: 13px; border-radius: 6px; color: var(--ink-soft);
   }
-  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 20px; }
+  /* L'appel à l'action prolonge la composition centrée de la zone de dépôt. */
+  .actions {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 12px; margin-top: 22px;
+  }
   .example {
     background: none; border: none; padding: 0; font-size: 14px;
     color: var(--ink-soft); text-decoration: underline; cursor: pointer;
   }
   .example:hover { color: var(--ink); background: none; }
 
-  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px; }
-  .step .t { font-size: 15px; font-weight: 600; margin-bottom: 5px; }
-  .step .d { font-size: 14px; color: var(--ink-soft); }
-  .step .rule { height: 3px; width: 34px; border-radius: 2px; margin-bottom: 12px; }
-  .step:nth-child(1) .rule { background: var(--arret); }
-  .step:nth-child(2) .rule { background: var(--majeur); }
-  .step:nth-child(3) .rule { background: var(--mineur); }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 26px; }
+  .step { position: relative; padding-top: 30px; }
+  .step .num {
+    position: absolute; top: -6px; left: -4px;
+    font-size: 60px; font-weight: 700; line-height: 1;
+    color: #ecebe8; letter-spacing: -0.03em; user-select: none; pointer-events: none;
+  }
+  .step .t { position: relative; font-size: 16px; font-weight: 600; margin-bottom: 5px; }
+  .step .d { position: relative; font-size: 14px; color: var(--ink-soft); }
 
   /* Progression */
   .panel {
@@ -157,8 +217,26 @@
 <body>
 <header class="bar">
   <div class="inner">
-    <h1>Inspection HSE</h1>
-    <p>Filmez la visite. Le rapport s'écrit, s'assigne et part tout seul.</p>
+    <div class="brand">
+      <div class="title-row">
+        <h1>HSE Audit Agent</h1>
+        <span class="pill">Analyse IA</span>
+      </div>
+      <p>Filmez la visite. Le rapport s'écrit, s'assigne et part tout seul.</p>
+    </div>
+    <div class="aside">
+      <div class="dossier" id="dossier" hidden>
+        <span class="k">Réf. dossier</span>
+        <span class="v" id="dossier-ref"></span>
+      </div>
+      <div class="avatar" aria-hidden="true">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -172,7 +250,15 @@
     <h2>Média de la visite</h2>
     <div class="drop" id="drop" tabindex="0" role="button"
          aria-label="Déposer un fichier ou parcourir">
-      <div class="headline">Déposez une vidéo ou des photos</div>
+      <div class="glyph">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+      </div>
+      <div class="headline">Déposez vos vidéos ou photos</div>
       <div class="hint">ou cliquez pour parcourir vos fichiers</div>
       <div class="limits">Une vidéo, ou jusqu'à 10 photos · 200 Mo par fichier ·
         MP4, MOV, JPEG, PNG</div>
@@ -201,19 +287,19 @@
     <h2>Comment ça marche</h2>
     <div class="steps">
       <div class="step">
-        <div class="rule"></div>
+        <div class="num" aria-hidden="true">01</div>
         <div class="t">Détecte et hiérarchise</div>
         <div class="d">Chaque écart est rattaché à une règle du référentiel et gradué
           selon ce que montre la scène, pas selon un barème figé.</div>
       </div>
       <div class="step">
-        <div class="rule"></div>
+        <div class="num" aria-hidden="true">02</div>
         <div class="t">Vous validez</div>
         <div class="d">Rien ne part sans votre accord. Vous corrigez une gravité,
           reformulez un constat, en ajoutez un que l'analyse a manqué.</div>
       </div>
       <div class="step">
-        <div class="rule"></div>
+        <div class="num" aria-hidden="true">03</div>
         <div class="t">L'agent notifie et relance</div>
         <div class="d">Chaque responsable reçoit ses constats, avec l'image probante,
           l'échéance et le rapport PDF complet.</div>
@@ -262,7 +348,9 @@
     progressSub: document.getElementById("progress-sub"),
     stages: document.getElementById("stages"),
     elapsed: document.getElementById("elapsed"),
-    progressError: document.getElementById("progress-error")
+    progressError: document.getElementById("progress-error"),
+    dossier: document.getElementById("dossier"),
+    dossierRef: document.getElementById("dossier-ref")
   };
 
   var referentiel = null;
@@ -292,16 +380,24 @@
 
   function renderReferentiels(entries) {
     el.referentiels.textContent = "";
-    entries.forEach(function (entry, index) {
+    entries.forEach(function (entry) {
       var card = node("button", "ref");
       card.type = "button";
       card.appendChild(node("div", "name", entry.label));
-      card.appendChild(node("div", "state", "Sélectionner"));
+      if (entry.description) { card.appendChild(node("div", "desc", entry.description)); }
+      var check = node("span", "check");
+      check.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" ' +
+        'stroke="currentColor" stroke-width="3.4" stroke-linecap="round" ' +
+        'stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      card.appendChild(check);
       card.addEventListener("click", function () { select(entry.key); });
       card.dataset.key = entry.key;
+      card.setAttribute("aria-pressed", "false");
       el.referentiels.appendChild(card);
-      if (index === 0) { select(entry.key); }
     });
+    // Sélection après la boucle : appelée pendant, elle ne verrait que les
+    // cartes déjà insérées et laisserait les suivantes sans état annoncé.
+    if (entries.length) { select(entries[0].key); }
   }
 
   function select(key) {
@@ -310,7 +406,6 @@
     for (var i = 0; i < cards.length; i++) {
       var active = cards[i].dataset.key === key;
       cards[i].setAttribute("aria-pressed", active ? "true" : "false");
-      cards[i].querySelector(".state").textContent = active ? "Sélectionné" : "Sélectionner";
     }
     refreshSubmit();
   }
@@ -417,6 +512,9 @@
   // --- progression --------------------------------------------------------
 
   function startProgress(id) {
+    // La référence de dossier n'existe qu'une fois l'inspection créée.
+    el.dossierRef.textContent = id;
+    el.dossier.hidden = false;
     el.setup.hidden = true;
     el.uploadSection.hidden = true;
     el.progressSection.hidden = false;

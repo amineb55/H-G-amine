@@ -584,6 +584,7 @@ async def read_referentiels() -> list[dict]:
             {
                 "key": referentiel.value,
                 "label": inspection_prompt.referentiel_label(referentiel.value),
+                "description": inspection_prompt.referentiel_description(referentiel.value),
             }
         )
     return entries

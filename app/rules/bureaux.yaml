@@ -1,5 +1,6 @@
 # Catalogue de regles - inspection bureaux et administrations
 referentiel: bureaux
+description: Espaces de travail, bureaux, postes
 label: Bureaux et administrations
 rules:
   - id: BUR-01

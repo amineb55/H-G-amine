@@ -1,5 +1,6 @@
 # Catalogue de regles - inspection chantier BTP
 referentiel: btp
+description: Travaux, engins, EPI, tranchées
 label: Chantier BTP
 rules:
   - id: BTP-01
