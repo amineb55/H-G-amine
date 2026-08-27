@@ -1,666 +1,225 @@
-# HSE Inspection Analysis Service
-
-FastAPI service for AI-assisted analysis of HSE inspection media. Media is
-uploaded, analyzed in the background, and deleted as soon as the analysis
-ends — only the result is retained.
-
-## Requirements
-
-- Python 3.10+
-
-## Project structure
-
-```
-app/
-  main.py                       FastAPI app and endpoints
-  config.py                     settings loaded from .env
-  models/schemas.py             Finding / InspectionResult schemas
-  services/analysis_engine.py   analysis engine interface
-  services/providers/           provider implementation behind that interface
-  services/inspection_prompt.py rule catalogs and system prompt assembly
-  services/assignment.py        assignment, deadlines and review summary
-  services/notification.py      grouping findings into per-recipient emails
-  services/evidence.py          evidence frames and capture time
-  services/report.py            the French PDF report
-  services/notifiers/           email provider implementation
-  services/storage.py           media storage (local filesystem)
-  services/inspection_store.py  inspection state (in-memory)
-  services/job_queue.py         job dispatch interface
-  services/inspection_job.py    the background analysis job
-rules/                          rule catalogs and assignment catalog (YAML)
-prompts/inspection.txt          system prompt template
-templates/review.html           the review screen
-requirements.txt
-.env.example
-```
-
-## Endpoints
-
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/` | The landing page: pick a referential, upload, watch progress. |
-| `GET` | `/referentiels` | The referentials on offer, with their labels. |
-| `GET` | `/health` | Liveness probe. |
-| `POST` | `/inspections` | Upload media and queue an analysis. Returns `202`. |
-| `GET` | `/inspections/{id}` | Current status and result. |
-| `GET` | `/inspections/{id}/review` | Enriched result plus review counts. |
-| `POST` | `/inspections/{id}/findings/{index}/approve` | Approve one finding. |
-| `POST` | `/inspections/{id}/findings/{index}/reject` | Reject one finding. |
-| `POST` | `/inspections/{id}/dispatch` | Email the approved findings to their owners. |
-| `PATCH` | `/inspections/{id}/findings/{index}` | Correct a finding. |
-| `POST` | `/inspections/{id}/findings` | Add a finding the analysis missed. |
-| `GET` | `/inspections/{id}/evidence/{filename}` | One retained evidence image. |
-| `GET` | `/inspections/{id}/report.pdf` | The PDF report. |
-| `GET` | `/review/{id}` | The review screen. |
-
-`POST /inspections` takes a multipart body with a `referentiel` field
-(`bureaux` or `btp`) and a `files` field holding **either one video or up to
-ten images**. Accepted types are `video/mp4`, `video/quicktime`, `image/jpeg`
-and `image/png`, each capped at 200 MB.
-
-| Status | Meaning |
-| --- | --- |
-| `202` | Accepted and queued. |
-| `400` | Bad combination of files (video and images mixed, too many). |
-| `413` | A file exceeds the size limit. |
-| `415` | Unsupported media type. |
-| `422` | Missing or invalid `referentiel`. |
-
-`GET /inspections/{id}` returns `status` (`processing`, `done` or `failed`),
-`result` (the `InspectionResult` once done, otherwise `null`) and `error`
-(the reason when the analysis failed, otherwise `null`). Unknown ids give
-`404`.
-
-## Assignment and deadlines
-
-Once the analysis returns, every finding is enriched by
-`app/services/assignment.py` before it is stored.
-
-**Who is accountable** comes from `app/rules/responsables.yaml`: a table of
-roles, a rule-to-role assignment per rule id, and an escalation rule. It is
-validated on load — an assignment pointing at an unknown role, an escalation
-target that does not exist or a malformed address all fail loudly rather than
-silently dropping a recipient. A rule with no entry in the catalog leaves the
-finding unassigned and is logged.
-
-**Deadlines** are computed from the severity actually observed, not the rule
-default:
-
-| Observed severity | Deadline |
-| --- | --- |
-| `arret_immediat` | today, `immediate: true` |
-| `critique` | +1 day |
-| `majeur` | +7 days |
-| `mineur` | +30 days |
-
-The rule's own `deadline_days` is the fallback if a severity outside that grid
-ever reaches the enrichment.
-
-**Who is notified** is the assigned role, plus the escalation role when the
-severity is `arret_immediat`. Addresses are de-duplicated, so roles sharing a
-mailbox are notified once.
-
-Findings whose analysis status is `a_verifier` are enriched like any other and
-carry `requires_review: true`. That flag is shown in the review screen so the
-auditor knows the finding is low-confidence, but it does not block dispatch:
-approving is the human act that resolves the doubt.
-
-## Sector detection
-
-`POST /inspections` takes an optional `referentiel`. Supplied, it is used as
-given — existing API callers are unaffected. Omitted, the agent works out the
-sector itself, which is what the landing page does.
-
-Detection is a **separate first pass**, deliberately small: it carries the
-catalogs' key, label and description but none of their rules — it has to
-recognise an environment, not audit it — and it samples video at
-`DETECTION_VIDEO_FPS` (0.1) rather than the audit's 1 fps. It returns the
-sector, a confidence score, and one French sentence naming what it
-recognised. That justification is shown on the review screen.
-
-Two calls rather than one because the audit prompt cannot be built until the
-catalog is known; folding both into a single call would mean shipping every
-sector's rules on every request and trusting the model not to mix them.
-
-**Nothing is audited on a guess.** Below `DETECTION_MIN_CONFIDENCE` (0.7), or
-when the scene matches no catalog, the job stops before the audit: the
-inspection comes back with `scene_valid: false`, no findings, and an
-explanation inviting the auditor to pick a sector. Auditing against the wrong
-sector's rules would produce findings that do not apply, which is worse than
-declining.
-
-### Media retention around an undetermined sector
-
-The retention rule is not "retain nothing"; it is "retain only what documents
-a finding, once the audit is done". Media whose audit has not happened has not
-finished its lifecycle, so an inspection left undetermined keeps its media —
-and only then:
-
-- **Any audit consumes the media.** One exit path: whether it succeeds or
-  fails, the media is deleted. No branch leaves it behind after an audit.
-- **The hold expires.** `UNDETERMINED_MEDIA_TTL_HOURS` (6) bounds it, and a
-  sweep in `app/services/media_reaper.py` deletes what has expired, so held
-  media cannot accumulate.
-- **The hold is stated.** The review screen says the media is being kept
-  temporarily pending the choice, and when it goes. A silent exception would
-  break the promise even where it is technically justified.
-
-`POST /inspections/{id}/referentiel` audits a held inspection against a chosen
-catalog. Once the media is gone it answers `409` and asks for a new upload.
-
-## Auditor corrections
-
-Approving or rejecting is not the only thing an auditor can do: the analysis
-can be corrected outright.
-
-`PATCH /inspections/{id}/findings/{index}` accepts `observed_severity`,
-`observation`, `rule_id` and `assigned_role`. Everything derived from those
-values is recomputed — the rule title, the accountable role, the deadline, the
-recipients and the escalation. An `assigned_role` set by hand overrides the
-catalog.
-
-What the analysis originally reported is preserved: the first override stores
-`original_severity` and `original_observation`, and the finding is flagged
-`edited_by_human`. The correction is therefore always auditable, in the review
-screen and in the PDF alike.
-
-`POST /inspections/{id}/findings` adds a finding the analysis missed, from
-`rule_id`, `observation` and `observed_severity`. Manual findings carry
-`source: "human"` — everything else carries `source: "ai"` — and are assigned
-and scheduled by the same rules.
-
-## PDF report
-
-`GET /inspections/{id}/report.pdf` renders the French report with reportlab:
-header (referential, capture time, edition date, counts by severity, stop-work
-banner when one applies), then one section per finding with its evidence image
-embedded, the rule title, observation, severity, justification, ISO clause,
-assignee, deadline, and whether it was detected by the analysis, corrected by
-the auditor, or added by them. The footer carries *Analyse assistée par IA,
-validée par un auditeur.*
-
-The same PDF is attached to every dispatch email.
-
-## Human validation
-
-Every finding carries `validation_status`, `pending` until a human decides.
-`POST .../approve` and `POST .../reject` record that decision; rejecting a
-finding that was already queued removes it from the queue.
-
-`POST /inspections/{id}/dispatch` emails the approved findings to the people
-accountable for them. Only findings left `pending` or `rejected` are excluded —
-an approved finding is sent whatever its confidence, and the ones flagged for
-review are listed in `approved_from_review` so the decision stays visible.
-
-## Notifications
-
-Emails are grouped **by recipient, not by finding**: one person receives one
-message listing everything they own, rather than eight separate emails.
-
-Findings that require work to stop immediately are pulled into their own
-message, sent before the digests, with the subject prefix `[ARRET IMMEDIAT]` —
-an imminent danger is never buried in a summary. A recipient therefore receives
-at most two emails per dispatch.
-
-Each finding carries its own outcome: `dispatch_status` is `not_queued`, `sent`
-or `failed`, with `message_id` on success and `dispatch_error` on failure. The
-response reports one `EmailOutcome` per email attempted.
-
-- **Partial failure never rolls back a success.** Each email is independent; a
-  failed one marks only its own findings `failed` and leaves delivered ones
-  alone.
-- **Nothing is ever sent twice.** A finding already `sent` is skipped on any
-  later dispatch and listed in `already_sent`, so calling dispatch again after
-  a partial failure retries only what failed.
-- Approved findings with no recipient are reported in `unassigned` rather than
-  silently dropped.
-
-Each email opens with a short paragraph addressed to the recipient's role,
-stating what they must do and by when. Urgency is settled in the first two
-lines — an immediate-stop email says the work must stop now and that no delay
-applies; a digest states the soonest deadline in plain words ("aujourd'hui",
-"demain", "sous 7 jours") and says explicitly that nothing requires stopping
-work. The evidence image is embedded in the body, and the PDF report is
-attached.
-
-`POST /inspections/{id}/dispatch` accepts an optional body `{"cc": [...]}`.
-Those addresses are copied on every email of that dispatch; the format is
-validated server-side and in the review screen, and a recipient is never copied
-on their own message.
-
-Everything the model wrote is HTML-escaped before it reaches an email body.
-
-### Landing page
-
-`GET /` serves `templates/index.html`, built like the review screen: plain
-HTML, vanilla JS, no framework and no build step. It lists the referentials
-from `GET /referentiels` — read from the rule catalogs, so adding one is a
-YAML change — takes a video or up to ten images by drag-and-drop, click or
-device camera, and applies the same validation as the upload endpoint before
-sending anything.
-
-**Progress reporting is limited to what the job can observe.** The job records
-a `stage` on the inspection, exposed by `GET /inspections/{id}`:
-
-| Stage | Set when | Shown as |
-| --- | --- | --- |
-| `reception` | media stored, job queued | Lecture du média |
-| `analyse` | the engine call is in flight | Confrontation au référentiel **and** Évaluation de la criticité, together |
-| `assignation` | the engine returned, enrichment running | Assignation des responsables |
-| `termine` | done or failed | all complete |
-
-Reading the media, auditing it against the referential and grading the
-severity happen inside **one** call to the analysis engine. Their boundaries
-are not observable, so the two corresponding rows light up together rather
-than being animated as if they completed in sequence. Nothing on the page
-claims a stage is finished that the backend has not confirmed.
-
-### Diagnosing a delivery failure
-
-A transport failure is logged at `ERROR` before it is wrapped, with the
-category, the host, the recipient, the exception type and its root cause. The
-API key is never logged, nor is the payload that carries it:
-
-```
-ERROR Email transport failure [dns] host=api.example.com recipient=... :
-      ConnectError: [Errno -2] Name or service not known (root cause gaierror: ...)
-```
-
-The wrapped message names the cause rather than saying the service could not
-be reached: `dns`, `connection_refused`, `tls`, `tls_verification`, `proxy`,
-`network_unreachable`, `connection_reset`, `timeout`, or an HTTP status.
-
-Any text derived from an exception — the wrapped message, the log line, the
-traceback, and every field of the diagnostic response — is scrubbed of the
-configured secret values first. A library that rejects a malformed request
-quotes the offending input back at you, credentials included, so redaction is
-applied at the formatter as well as at each call site: a value shorter than
-six characters is left alone rather than mangling unrelated text.
-
-Secrets are also stripped of surrounding whitespace when read. A value
-injected from a secret store often carries a trailing newline, which makes an
-HTTP header illegal and produces exactly the kind of error that leaks the
-value. Startup names any variable that had to be stripped, never its value:
-
-```
-WARNING Surrounding whitespace was stripped from: NOTIFIER_API_KEY.
-```
-
-### Email provider
-
-`app/services/notifiers/email_notifier.py` is the only module aware of which
-email provider is used — its endpoint, payload and status codes stop there. It
-exposes one function:
-
-```python
-async def send(to: str, subject: str, html: str) -> str  # returns the message id
-```
-
-It calls the provider's transactional HTTP API with `httpx`; no provider SDK is
-installed. Failures surface as readable messages — bad credentials, rate
-limiting, unavailability, timeout and unreachable host each get their own.
-
-### Review screen
-
-`GET /review/{id}` serves `templates/review.html`: plain HTML and vanilla JS,
-no framework and no build step. It loads its data from the review endpoint and
-shows, per finding, the timestamp, rule title, observation, observed severity
-in colour, the severity justification, confidence, ISO 45001 clause, the
-accountable person and the deadline. Findings are ordered most serious first,
-`arret_immediat` ones carry an explicit stop-work banner, and the header counts
-findings by severity and by review state. Low-confidence findings are badged
-and their confidence highlighted, so an auditor approving one sees what they
-are approving.
-
-The screen is in French; the API responses and this README are in English.
-
-## Persistence
-
-Inspections are stored in a document database, one document per inspection in
-the `inspections` collection, keyed by `inspection_id`. An inspection —
-including its findings, their enrichment, and their validation and dispatch
-state — survives a restart or a redeploy.
-
-The client is synchronous, so every call runs in a worker thread and the event
-loop is never blocked. **The store functions are therefore `async`**: same
-names, same arguments, same return values as before, but callers `await` them.
-A synchronous function cannot offload work to a thread without blocking the
-caller, so keeping them synchronous would have defeated the purpose.
-
-Credentials come from the ambient environment (application default
-credentials) — there is no key file in the repository. The project id is read
-from `GOOGLE_CLOUD_PROJECT`, falling back to whatever the credentials name.
-
-Records are written through a normaliser that turns enums and dates into plain
-scalars, and read back through the pydantic models, so datetimes round-trip
-exactly.
-
-### When the store is unreachable
-
-The client is built on first use, never at import, and the application starts
-regardless. A startup probe reports the outcome in the logs:
-
-```
-INFO:     app.main - Inspection store: persistent, collection 'inspections'.
-ERROR:    app.main - Inspection store UNREACHABLE: ... The application is
-                     running, but every inspection request will fail until
-                     this is fixed.
-```
-
-Every store call is bounded by `STORE_TIMEOUT_SECONDS` and fails with a
-readable message rather than hanging — the client library retries internally
-and can outlive its own timeout, so the deadline is enforced at the call
-boundary. A worker thread cannot be interrupted, so a call that overruns is
-left to finish on its own; with an unreachable store those stragglers can
-delay process shutdown.
-
-### Local work without credentials
-
-Set `STORE_BACKEND=memory` to use the in-process dictionary instead. Startup
-says so explicitly:
-
-```
-WARNING:  app.main - Inspection store: IN MEMORY. Inspections are lost when
-                     this process stops.
-```
-
-### Evidence storage
-
-Evidence images go to object storage, selected by `STORAGE_BACKEND`:
-
-- `gcs` (default) — objects at `evidence/{inspection_id}/{filename}` in the
-  bucket named by `EVIDENCE_BUCKET`. Survives an instance being replaced.
-- `local` — a directory under `EVIDENCE_DIR`, for development without cloud
-  credentials.
-
-Callers never learn which backend is in use: the evidence endpoint, the PDF
-generator and the email builder all read through `app/services/storage.py`,
-none of them assumes a filesystem path. Inspection ids and file names are
-validated against a strict pattern before they reach either backend, so
-nothing can be read outside an inspection's own space.
-
-Uploaded media is the exception and stays on local disk: the analysis and the
-frame extraction need real files, and it is deleted as soon as the job ends.
-On Cloud Run that disk is in-memory and counts against the instance's memory,
-so a 200 MB upload is 200 MB of the 1 GiB allowance.
-
-## Deployment
-
-The service runs on Cloud Run from the `Dockerfile`: `python:3.11-slim`,
-multi-stage, a single uvicorn worker, listening on the `PORT` the platform
-provides (8080 when run without one) as a non-root user. `ffmpeg` comes from
-the `imageio-ffmpeg` wheel as a statically linked binary — verified with
-`ldd`, it has no dynamic dependencies — so the slim image needs no apt
-package and downloads nothing at run time.
-
-Deploy with `./deploy.sh` (bash) or `.\deploy.ps1` (PowerShell). Both run the
-same `gcloud run deploy` against `europe-west1` with 1 GiB and a 300 s
-timeout, and both take the project from `PROJECT_ID` or your gcloud default.
-
-### Secrets
-
-Secrets are injected as environment variables from Secret Manager; the
-application never calls Secret Manager itself and no key file exists in this
-repository.
-
-| Secret | Environment variable |
-| --- | --- |
-| `analysis-engine-api-key` | `ANALYSIS_ENGINE_API_KEY` |
-| `notifier-api-key` | `NOTIFIER_API_KEY` |
-| `notifier-sender-email` | `NOTIFIER_SENDER_EMAIL` |
-
-A missing secret does not stop the service from starting; it is reported at
-startup **by name only**, and the feature that needs it fails with a readable
-message:
-
-```
-ERROR: Missing configuration: NOTIFIER_API_KEY. The application is running,
-       but the features that need them will fail until they are provided.
-```
-
-### IAM
-
-Grant the Cloud Run service account three roles. By default that account is
-`PROJECT_NUMBER-compute@developer.gserviceaccount.com`; find it with:
+# HSE Audit Agent
+
+An autonomous agent that turns a workplace safety walkthrough into dispatched
+corrective actions — without a human writing the report.
+
+An inspector uploads a short video or a few photos from a site walkthrough. The
+agent identifies the work environment, detects safety non-conformities against
+the matching rule catalogue, maps each one to the relevant ISO 45001 clause,
+decides its real severity from what is actually visible, assigns it to the
+responsible role with a risk-based deadline, and — after a single human
+approval — emails each recipient a personalised action notice with the evidence
+photo and a PDF report attached.
+
+**Live service:** https://hse-audit-agent-2161166844.europe-west1.run.app
+
+**Hackathon:** All Things Agentic — track: The Taskmaster
+
+---
+
+## Why this is an agent, not a chatbot
+
+The value is not the analysis. It is everything the system does *after* the
+upload, on its own:
+
+| Decision | Made by the agent |
+|---|---|
+| Which sector this is | Yes — detected from the media, no user input |
+| Which rule was breached | Yes — against the matching catalogue |
+| How severe it *actually* is | Yes — escalated or lowered from the rule default, with a written justification |
+| Whether work must stop now | Yes — `arret_immediat` triggers a separate, priority alert |
+| Who is responsible | Yes — from the assignment catalogue |
+| By when | Yes — computed from the observed severity |
+| Whether to escalate to management | Yes — imminent danger also notifies the site director |
+| Whether it is confident enough to assert it | Yes — below 0.7 confidence a finding is flagged `a_verifier`, never asserted |
+| Whether to audit at all | Yes — an unrecognised sector produces no findings, not guesses |
+
+The human does one thing: approve, correct, or reject. Nothing leaves the system
+without that approval.
+
+---
+
+## Scope of this demo
+
+Two referentials are implemented and field-tested:
+
+- **`bureaux`** — offices and administrative premises (12 rules)
+- **`btp`** — construction sites (12 rules)
+
+The rule catalogues live in `app/rules/*.yaml`, not in code. Adding a sector is
+a new YAML file — no code change. Four more sectors (industry, healthcare,
+logistics, hospitality, transport) are drafted but deliberately out of scope: a
+safety rule catalogue that has not been validated in the field has no business
+being shipped. We would rather present two sectors that work than six that look
+impressive in a diagram.
+
+---
+
+## Design decisions worth reading
+
+**The agent detects the sector; it does not guess it.** Detection runs as a
+first pass on the media. If confidence is below 0.7, or if the scene matches no
+available catalogue, the agent produces no findings and says so — it never picks
+a sector just to have something to audit. The auditor can then choose manually.
+
+**Nothing is asserted that a human did not approve.** Rejected and pending
+findings are excluded from the PDF report and from every email. The report
+states how many findings were rejected or left pending, so the auditor's
+decision stays traceable without its content being asserted.
+
+**The auditor can correct the model, not just veto it.** Severity, observation
+text, rule and assignee are editable. Original AI values are retained
+(`original_severity`, `original_observation`) so every correction is auditable.
+The auditor can also add a finding the model missed.
+
+**No individual is ever identified.** The prompt forbids describing or
+characterising people; findings refer to role and location only ("an operator
+near the east wall"). This is deliberate: the tool detects dangerous situations,
+not individual fault. That single constraint is what makes it deployable in
+front of a works council instead of being blocked as workplace surveillance.
+
+**Source media is destroyed once its audit is done.** Only the evidence frames
+for actual findings are retained. For video, one still frame is extracted per
+finding timestamp and the video is deleted — locally and at the provider.
+
+The one narrow exception: when detection cannot determine the sector, no audit
+has run, so the media is held briefly with a short TTL so the auditor can pick a
+sector without re-uploading. It is deleted the moment any audit runs against it,
+whether that audit succeeds or fails, and expires automatically otherwise. The
+retention rule was never "retain nothing" — it is "retain only what documents a
+finding, once the audit is done". Media whose audit has not yet happened has not
+completed its lifecycle. The UI states this explicitly rather than making a
+silent exception.
+
+**Every external dependency sits behind a neutral interface.** The analysis
+provider, the object storage, the inspection store and the email notifier each
+have exactly one implementation file. No other module imports a vendor SDK or
+names a vendor. Swapping any of them is a one-file change.
+
+---
+
+## Architecture
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the diagram and the reasoning behind
+each boundary.
+
+| Layer | Technology |
+|---|---|
+| API & UI | FastAPI, server-rendered templates, vanilla JS (no build step) |
+| Analysis | Gemini 3.5 Flash via the Gemini API, structured JSON output |
+| Async execution | Background jobs behind a swappable queue interface |
+| State | Firestore (native mode, `europe-west1`) |
+| Evidence | Cloud Storage |
+| Reports | ReportLab |
+| Notifications | Transactional email API |
+| Runtime | Cloud Run, `europe-west1` |
+| Secrets | Secret Manager, injected as environment variables |
+
+---
+
+## Running locally
+
+Requires Python 3.11+.
 
 ```bash
-PROJECT_ID=$(gcloud config get-value project)
-PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
-SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-```
-
-| Role | Why |
-| --- | --- |
-| `roles/datastore.user` | read and write the inspection documents |
-| `roles/storage.objectAdmin` | write, read and delete evidence objects |
-| `roles/secretmanager.secretAccessor` | read the three secrets at start-up |
-
-```bash
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:${SA}" --role="roles/datastore.user"
-
-gcloud storage buckets add-iam-policy-binding gs://hse-audit-agent-evidence \
-  --member="serviceAccount:${SA}" --role="roles/storage.objectAdmin"
-
-gcloud secrets add-iam-policy-binding analysis-engine-api-key \
-  --member="serviceAccount:${SA}" --role="roles/secretmanager.secretAccessor"
-gcloud secrets add-iam-policy-binding notifier-api-key \
-  --member="serviceAccount:${SA}" --role="roles/secretmanager.secretAccessor"
-gcloud secrets add-iam-policy-binding notifier-sender-email \
-  --member="serviceAccount:${SA}" --role="roles/secretmanager.secretAccessor"
-```
-
-`roles/storage.objectAdmin` is granted on the bucket rather than the whole
-project, so the service can only touch its own evidence.
-
-### Health and startup
-
-`GET /health` touches nothing downstream and answers `200` even when the
-store and the bucket are both unreachable — the platform must never restart a
-healthy container because of a downstream outage. Requests that do need a
-backend return `503` with the reason:
-
-```json
-{"detail": "The inspection store did not answer in time; could not read this inspection."}
-```
-
-Startup logs which backends are active, and never logs a secret value:
-
-```
-INFO:  Configuration: all required secrets are present.
-INFO:  Inspection store: persistent, collection 'inspections'.
-INFO:  Evidence storage: object storage, bucket 'hse-audit-agent-evidence'.
-```
-
-## Processing model
-
-Uploads are analyzed outside the request cycle, so the client gets its
-`inspection_id` immediately and polls for the result.
-
-- Jobs are dispatched through `app/services/job_queue.py`, which currently
-  runs them in-process via FastAPI `BackgroundTasks`. Swapping in a real
-  broker means replacing that module, not the endpoints.
-- Inspection state lives in `app/services/inspection_store.py`, behind
-  `get` / `set` / `update`. See **Persistence** below.
-- A failing job records `status: failed` and the error message. It never
-  propagates, so a bad analysis cannot take the server down.
-
-### Media retention and evidence
-
-Uploaded media is written under `data/uploads/{inspection_id}/` and deleted by
-`storage.delete_media()` in the job's `finally` block — so it is removed
-whether the analysis succeeds or fails. Client filenames are never reused on
-disk: each file is stored under a generated name with a suffix derived from its
-validated media type.
-
-What survives is the **evidence**, under `data/evidence/{inspection_id}/`:
-
-- **Video**: one still is extracted at each finding's `timestamp_sec`, and the
-  video is deleted. Two findings at the same second share one frame.
-- **Images**: the image a finding came from is kept, downscaled. The model
-  reports which image it observed as the 0-based index in `timestamp_sec`; an
-  index outside the batch falls back to the first image.
-
-Each finding carries `evidence_image`, served by
-`GET /inspections/{id}/evidence/{filename}`. File names are validated against a
-strict pattern and resolved inside the inspection's own directory, so nothing
-outside it can be reached.
-
-`captured_at` is the moment the media was shot, read from EXIF
-`DateTimeOriginal` on images and the container creation time on video — the
-earliest one found. **It is never inferred**: media without that metadata
-leaves it `null`, and the review screen and report say so rather than
-substituting a plausible date.
-
-## Run locally
-
-```bash
-python3 -m venv .venv
+python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install --upgrade pip
 pip install -r requirements.txt
-cp .env.example .env
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+cp .env.example .env               # then fill in the values below
+uvicorn app.main:app --reload --port 8000
 ```
 
-Then:
+Open http://127.0.0.1:8000 — the landing page. `/health` returns
+`{"status":"ok"}` without touching any backend.
 
-- Health check: http://127.0.0.1:8000/health -> `{"status":"ok"}`
-- API docs: http://127.0.0.1:8000/docs
+### Environment
 
-## Testing the endpoints
+| Variable | Purpose |
+|---|---|
+| `ANALYSIS_ENGINE_API_KEY` | Gemini API key |
+| `ANALYSIS_ENGINE_MODEL` | Optional model override |
+| `NOTIFIER_API_KEY` | Transactional email API key |
+| `NOTIFIER_SENDER_EMAIL` | Verified sender address |
+| `GOOGLE_CLOUD_PROJECT` | GCP project id |
+| `STORE_BACKEND` | `firestore` (default) or `memory` |
+| `STORAGE_BACKEND` | `gcs` (default) or `local` |
+| `EVIDENCE_BUCKET` | Cloud Storage bucket for evidence |
+
+`STORE_BACKEND=memory STORAGE_BACKEND=local` runs the whole flow with no cloud
+credentials — useful for a first look.
+
+### Trying it
+
+Open the landing page, drop a photo or video, and press **Lancer l'analyse**.
+There is also a one-click example on the page for anyone without a site photo
+to hand.
+
+Via the API, the sector is optional — omit it and the agent detects it:
 
 ```bash
-# One video
-curl -i -X POST http://127.0.0.1:8000/inspections \
-  -F "referentiel=btp" \
-  -F "files=@/path/to/clip.mp4;type=video/mp4"
-
-# Up to ten images
-curl -i -X POST http://127.0.0.1:8000/inspections \
-  -F "referentiel=bureaux" \
-  -F "files=@/path/to/one.jpg;type=image/jpeg" \
-  -F "files=@/path/to/two.png;type=image/png"
-
-# Poll the result
-curl http://127.0.0.1:8000/inspections/<inspection_id>
+curl -X POST http://127.0.0.1:8000/inspections \
+  -F "files=@walkthrough.jpg;type=image/jpeg"
 ```
 
-## Configuration
+---
 
-Settings are read from the environment and from `.env` (see `.env.example`).
-`.env` is git-ignored and must never be committed.
+## Deploying
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `UPLOAD_DIR` | `data/uploads` | Where media is held during analysis. |
-| `MAX_UPLOAD_BYTES` | `209715200` | Per-file size limit (200 MB). |
-| `MAX_IMAGES` | `10` | Images accepted per inspection. |
-| `EVIDENCE_DIR` | `data/evidence` | Where retained evidence images live. |
-| `EVIDENCE_MAX_PIXELS` | `1280` | Longest edge of a stored evidence image. |
-| `STORE_BACKEND` | `firestore` | `firestore` to persist, `memory` for local work. |
-| `STORE_COLLECTION` | `inspections` | Collection holding the inspections. |
-| `GOOGLE_CLOUD_PROJECT` | *(empty)* | Project id. Empty uses the credentials' own. |
-| `STORE_TIMEOUT_SECONDS` | `15` | Deadline on each store call. |
-| `STORE_PROBE_SECONDS` | `5` | Deadline on the startup probe. |
-| `LOG_LEVEL` | `INFO` | Application log level. |
-| `STORAGE_BACKEND` | `gcs` | `gcs` for object storage, `local` for a directory. |
-| `EVIDENCE_BUCKET` | *(empty)* | Bucket holding the evidence. Required in `gcs` mode. |
-| `PORT` | `8080` | Port the container listens on. Supplied by the platform. |
-| `ANALYSIS_ENGINE_API_KEY` | *(empty)* | Provider credentials. Required to analyze. |
-| `ANALYSIS_ENGINE_MODEL` | *(empty)* | Model identifier. Empty uses the provider default. |
-| `ANALYSIS_ENGINE_TIMEOUT_SECONDS` | `120` | Per-request timeout. |
-| `ANALYSIS_ENGINE_VIDEO_FPS` | `1.0` | Frames sampled per second of video. |
-| `BREVO_API_KEY` | *(empty)* | Email provider credentials. Required to send. |
-| `BREVO_SENDER_EMAIL` | *(empty)* | Address emails are sent from. |
-| `NOTIFIER_SENDER_NAME` | `Inspection HSE` | Display name on outgoing email. |
-| `NOTIFIER_TIMEOUT_SECONDS` | `30` | Per-request timeout when sending. |
-| `NOTIFIER_API_URL` | *(empty)* | Override the provider endpoint. Empty uses the default. |
-
-## Analysis engine
-
-`app/services/analysis_engine.py` exposes a single vendor-neutral entry point:
-
-```python
-async def analyze(media_path: str, referentiel: str) -> dict
+```bash
+./deploy.sh          # Windows: .\deploy.ps1
 ```
 
-`media_path` is the directory holding one inspection's media — one video or a
-batch of images. The engine delegates to the provider in
-`app/services/providers/`, which is the **only** module allowed to import the
-provider SDK: the model identifier, the SDK types and its error classes all
-stop there. The import is lazy, so the rest of the application starts and runs
-without the SDK installed.
+The service account needs `roles/datastore.user`,
+`roles/storage.objectAdmin` and `roles/secretmanager.secretAccessor`.
+Exact grant commands are in `deploy.sh`.
 
-Swapping providers means writing a new module in `providers/` and changing the
-delegation in `analysis_engine.py`. Nothing else in the codebase refers to a
-provider.
+---
 
-Failures never surface as stack traces. Each cause gets its own message,
-stored on the inspection and returned by `GET /inspections/{id}`:
+## API
 
-| Cause | Message stored |
-| --- | --- |
-| No API key configured | The analysis engine is not configured: no API key is set. |
-| Rate limited | The analysis engine is rate limited. Retry this inspection later. |
-| Bad credentials | The analysis engine rejected the configured credentials. |
-| Timeout | The analysis engine did not respond in time. |
-| Provider unavailable | The analysis engine is temporarily unavailable. Retry this inspection later. |
-| Unusable response, twice | The analysis engine returned a result in an unexpected format, twice in a row. |
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/` | Landing page |
+| `GET` | `/health` | Liveness — never touches a backend |
+| `GET` | `/referentiels` | Available catalogues, from YAML |
+| `POST` | `/inspections` | Upload media, returns `202` and an id. `referentiel` optional |
+| `GET` | `/inspections/{id}` | Job status, current stage, and result |
+| `GET` | `/inspections/{id}/review` | Enriched result for the review screen |
+| `PATCH` | `/inspections/{id}/findings/{i}` | Correct a finding |
+| `POST` | `/inspections/{id}/findings` | Add a finding the model missed |
+| `POST` | `/inspections/{id}/findings/{i}/approve` | Approve |
+| `POST` | `/inspections/{id}/findings/{i}/reject` | Reject |
+| `POST` | `/inspections/{id}/dispatch` | Send approved findings |
+| `GET` | `/inspections/{id}/evidence/{filename}` | Evidence frame |
+| `GET` | `/inspections/{id}/report.pdf` | PDF report |
+| `GET` | `/review/{id}` | Review UI |
 
-Token usage is logged at INFO on every call, so cost can be tracked:
+---
 
-```
-Analysis call: model=... attempt=1 prompt_tokens=1200 output_tokens=300 thoughts_tokens=50 total_tokens=1550
-```
+## Known limits
 
-### Rule catalogs
+Stated plainly, because an audit tool that hides its limits is worse than none:
 
-`app/rules/<referentiel>.yaml` holds the rules audited for each referential —
-`bureaux.yaml` and `btp.yaml`. Each rule carries `id`, `title`,
-`default_severity`, `deadline_days` and `iso_45001_clause`. The files ship with
-two example rules each; replace their contents with the real catalogs. The
-structure is validated on load, and an unknown referential, a malformed file or
-a duplicate rule id fails the inspection with a readable message.
+- **Detection is partial.** On a dense construction scene the model finds the
+  prominent hazards and misses secondary ones. It assists an auditor; it does
+  not replace one.
+- **The upstream model API returns `503` under load.** The agent handles this
+  cleanly — the inspection is marked failed with a readable message and a retry
+  action, the container stays healthy, and no partial state is written. But a
+  retry may be needed.
+- **Inline evidence images use data URIs**, which Gmail's web client blocks. The
+  attached PDF carries the same images reliably.
+- **Correcting an already-sent finding does not re-send it.** An email cannot be
+  unsent; in real audit practice a correction is issued, history is not
+  rewritten.
+- **Sender reputation.** The demo sends from a freemail address without DKIM, so
+  messages may land in spam.
+- **This produces a self-assessment, not a certification.** Only an accredited
+  body certifies conformity to ISO 45001.
 
-### System prompt
+---
 
-`app/prompts/inspection.txt` is the prompt template, editable without touching
-code. Two placeholders are substituted at run time: `{{REFERENTIEL}}` and
-`{{RULES}}`, the latter being the loaded catalog. The prompt instructs the model
-to audit only against that catalog, to check the scene matches the referential
-(otherwise `scene_valid: false` and no findings), to report only what is
-visibly observable, to mark anything below 0.7 confidence as `a_verifier`, to
-refer to people by role and location and never identify them, and to justify
-any severity it raises or lowers relative to the rule default.
+## Interface language
 
-### Response handling
-
-Structured JSON output is requested from the model and validated with pydantic.
-An unparseable or non-conforming response triggers **one** retry carrying the
-validation error as a corrective instruction; a second failure fails the
-inspection. Unvalidated data is never returned. Video is sampled at one frame
-per second (`ANALYSIS_ENGINE_VIDEO_FPS`) to bound the cost of a long clip, and
-the provider deletes its own copy of the media once the call is over.
-
-## Schema
-
-`Finding`
-
-| Field | Type | Notes |
-| --- | --- | --- |
-| `timestamp_sec` | `int` | offset in the media, seconds |
-| `rule_id` | `str` | referential rule identifier |
-| `observation` | `str` | what was observed |
-| `default_severity` | `str` | severity defined by the rule |
-| `observed_severity` | `str` | severity retained for this observation |
-| `severity_reason` | `str` | justification |
-| `iso_45001_clause` | `str` | related ISO 45001 clause |
-| `confidence` | `float` | between 0.0 and 1.0 |
-| `status` | `str` | review status |
-
-`InspectionResult`: `inspection_id: str`, `referentiel: str`,
-`scene_valid: bool`, `scene_detected: str`, `findings: list[Finding]`.
-
-Severity values: `arret_immediat`, `critique`, `majeur`, `mineur`.
-Status values: `nc`, `a_verifier`.
+The operator interface, reports and emails are in French, the working language
+of the target users. API responses, code and documentation are in English.
