@@ -1,13 +1,20 @@
 # Exemple de démonstration
 
-`chantier-exemple.jpg` est une **illustration générée**, pas une photographie de
-chantier. Elle existe pour que le bouton « Essayer avec un exemple » fonctionne
-sans qu'un visiteur ait à fournir sa propre image.
+`chantier-exemple.jpg` est la photo chargée par le bouton « Essayer avec un
+exemple » de la page d'accueil, pour qu'un visiteur puisse tester le service
+sans fournir sa propre image.
 
-Une illustration ne donne pas les mêmes résultats qu'une vraie photo : le moteur
-peut ne pas reconnaître la scène comme un chantier exploitable, et renvoyer
-`scene_valid: false` ou aucun constat.
+Le fichier doit être un **JPEG réel** : la page l'envoie en déclarant
+`image/jpeg`, et le moteur d'analyse reçoit ce type. Un fichier PNG renommé en
+`.jpg` déclarerait un type qui ne correspond pas à son contenu.
 
-**Avant une démonstration publique, remplacez ce fichier par une vraie photo de
-chantier**, sous le même nom et au même emplacement. Aucun changement de code
-n'est nécessaire.
+Pour le remplacer, gardez le même nom et le même emplacement — aucun
+changement de code n'est nécessaire :
+
+```bash
+python - <<'PY'
+from PIL import Image
+Image.open("votre-photo.png").convert("RGB").save(
+    "static/demo/chantier-exemple.jpg", format="JPEG", quality=90, optimize=True)
+PY
+```
