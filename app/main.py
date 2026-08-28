@@ -649,9 +649,9 @@ async def choose_referentiel(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
-                "Le média de cette inspection n'est plus disponible : il est "
-                "supprimé dès qu'un audit a été lancé. Relancez une analyse "
-                "avec un nouveau téléversement."
+                "This inspection's media is no longer available: it is deleted "
+                "as soon as an audit has run. Start a new analysis with a new "
+                "upload."
             ),
         )
 

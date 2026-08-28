@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Inspection HSE</title>
+<title>HSE Audit Agent</title>
 <link rel="icon" href="data:,">
 <style>
   :root {
@@ -15,9 +15,9 @@
     --ink-soft: #55606f;
     --ink-faint: #8b939e;
     --slate: #1e293b;
-    --header: #1e2d29;          /* vert-ardoise foncé, 14.4:1 avec du blanc */
+    --header: #1e2d29;          /* dark slate-green, 14.4:1 against white */
     --header-soft: #9fb3ab;
-    --valid: #15803d;           /* validation — distinct des quatre gravités */
+    --valid: #15803d;           /* validation — distinct from the four severities */
     --valid-tint: #f2f8f4;
     --valid-border: #bfdccb;
     --cta: #d97706;             /* accent chaud, texte ardoise : 4.59:1 */
@@ -29,9 +29,9 @@
     --radius: 10px;
   }
   * { box-sizing: border-box; }
-  /* Une règle de classe qui pose display: flex l'emporte sur le display:none
-     que le navigateur applique à [hidden] : sans ceci, masquer un élément par
-     l'attribut hidden reste sans effet. */
+  /* A class rule setting display: flex outranks the display:none the
+     browser applies to [hidden]: without this, hiding an element through the
+     hidden attribute has no effect. */
   [hidden] { display: none !important; }
 
   html, body { margin: 0; padding: 0; }
@@ -116,15 +116,15 @@
     font-weight: 700; padding: 13px 26px;
   }
   button.primary:hover:not(:disabled) { background: var(--cta-hover); border-color: var(--cta-hover); }
-  /* Désactivé : un aplat neutre plutôt qu'un ambre délavé, qui rendait le
-     libellé difficile à lire. */
+  /* Disabled: a neutral fill rather than washed-out amber, which made the
+     label hard to read. */
   button.primary:disabled {
     background: #ecebe8; border-color: #ecebe8; color: #94918c; opacity: 1;
   }
   button.remove {
     padding: 4px 10px; font-size: 13px; border-radius: 6px; color: var(--ink-soft);
   }
-  /* L'appel à l'action prolonge la composition centrée de la zone de dépôt. */
+  /* The call to action continues the drop zone's centred composition. */
   .actions {
     display: flex; flex-direction: column; align-items: center;
     gap: 12px; margin-top: 22px;
@@ -228,13 +228,13 @@
     <div class="brand">
       <div class="title-row">
         <h1>HSE Audit Agent</h1>
-        <span class="pill">Analyse IA</span>
+        <span class="pill">AI analysis</span>
       </div>
-      <p>Filmez la visite. Le rapport s'écrit, s'assigne et part tout seul.</p>
+      <p>Film the walkthrough. The report writes, assigns and sends itself.</p>
     </div>
     <div class="aside">
       <div class="dossier" id="dossier" hidden>
-        <span class="k">Réf. dossier</span>
+        <span class="k">Case ref.</span>
         <span class="v" id="dossier-ref"></span>
       </div>
       <div class="avatar" aria-hidden="true">
@@ -250,9 +250,9 @@
 
 <main>
   <section id="upload-section">
-    <h2>Média de la visite</h2>
+    <h2>Walkthrough media</h2>
     <div class="drop" id="drop" tabindex="0" role="button"
-         aria-label="Déposer un fichier ou parcourir">
+         aria-label="Drop a file or browse">
       <div class="glyph">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -261,33 +261,33 @@
           <line x1="12" y1="15" x2="12" y2="3"></line>
         </svg>
       </div>
-      <div class="headline">Déposez vos vidéos ou photos</div>
-      <div class="hint">ou cliquez pour parcourir vos fichiers</div>
-      <div class="limits">Une vidéo, ou jusqu'à 10 photos · 200 Mo par fichier ·
+      <div class="headline">Drop your videos or photos</div>
+      <div class="hint">or click to browse your files</div>
+      <div class="limits">One video, or up to 10 photos · 200 MB per file ·
         MP4, MOV, JPEG, PNG</div>
     </div>
     <input type="file" id="picker" multiple accept="video/mp4,video/quicktime,image/jpeg,image/png" hidden>
     <ul class="files" id="files"></ul>
     <div class="actions">
-      <button type="button" class="primary" id="submit" disabled>Lancer l'analyse</button>
-      <button type="button" class="example" id="example">Essayer avec un exemple</button>
-      <button type="button" class="example" id="manual">Choisir le secteur manuellement</button>
+      <button type="button" class="primary" id="submit" disabled>Start the analysis</button>
+      <button type="button" class="example" id="example">Try with an example</button>
+      <button type="button" class="example" id="manual">Choose the sector manually</button>
     </div>
     <div id="manual-panel" hidden>
-      <h2>Secteur</h2>
-      <p class="manual-hint">Par défaut, l'agent identifie le secteur à partir du
-        média. Vous pouvez l'imposer ici.</p>
+      <h2>Sector</h2>
+      <p class="manual-hint">By default the agent identifies the sector from the
+        media. You can force it here.</p>
       <div class="referentiels" id="referentiels"></div>
-      <button type="button" class="example" id="manual-clear">Revenir à la détection automatique</button>
+      <button type="button" class="example" id="manual-clear">Back to automatic detection</button>
     </div>
     <div id="upload-error"></div>
   </section>
 
   <section id="progress-section" hidden>
-    <h2>Analyse en cours</h2>
+    <h2>Analysis in progress</h2>
     <div class="panel">
-      <h3 id="progress-title">Analyse de la visite</h3>
-      <p class="sub" id="progress-sub">Vous serez redirigé vers l'écran de validation dès que c'est prêt.</p>
+      <h3 id="progress-title">Analysing the walkthrough</h3>
+      <p class="sub" id="progress-sub">You will be redirected to the validation screen as soon as it is ready.</p>
       <ol class="stages" id="stages"></ol>
       <div class="elapsed" id="elapsed"></div>
       <div id="progress-error"></div>
@@ -295,42 +295,42 @@
   </section>
 
   <section>
-    <h2>Comment ça marche</h2>
+    <h2>How it works</h2>
     <div class="steps">
       <div class="step">
         <div class="num" aria-hidden="true">01</div>
-        <div class="t">Détecte et hiérarchise</div>
-        <div class="d">Chaque écart est rattaché à une règle du référentiel et gradué
-          selon ce que montre la scène, pas selon un barème figé.</div>
+        <div class="t">Detects and prioritises</div>
+        <div class="d">Every deviation is tied to a rule of the referential and graded
+          by what the scene actually shows, not by a fixed scale.</div>
       </div>
       <div class="step">
         <div class="num" aria-hidden="true">02</div>
-        <div class="t">Vous validez</div>
-        <div class="d">Rien ne part sans votre accord. Vous corrigez une gravité,
-          reformulez un constat, en ajoutez un que l'analyse a manqué.</div>
+        <div class="t">You validate</div>
+        <div class="d">Nothing goes out without your approval. Correct a severity,
+          reword a finding, add one the analysis missed.</div>
       </div>
       <div class="step">
         <div class="num" aria-hidden="true">03</div>
-        <div class="t">L'agent notifie et relance</div>
-        <div class="d">Chaque responsable reçoit ses constats, avec l'image probante,
-          l'échéance et le rapport PDF complet.</div>
+        <div class="t">The agent notifies and follows up</div>
+        <div class="d">Each owner receives their findings, with the evidence image,
+          the deadline and the full PDF report.</div>
       </div>
     </div>
   </section>
 
   <section>
     <div class="judges">
-      <div class="judges-title">Périmètre de la démonstration</div>
-      <p>Cette démonstration couvre deux secteurs : bureaux et administrations, et
-        chantiers BTP. Les référentiels sont des fichiers de configuration : ajouter
-        un secteur ne demande aucune modification du code. Les autres secteurs
-        (industrie, santé, logistique, transport, restauration) sont rédigés mais
-        non validés sur le terrain, et volontairement hors périmètre.</p>
+      <div class="judges-title">Scope of this demonstration</div>
+      <p>This demonstration covers two sectors: offices and administrative
+        premises, and construction sites. Referentials are configuration files:
+        adding a sector requires no code change. The other sectors (industry,
+        healthcare, logistics, transport, food service) are drafted but not
+        field-validated, and deliberately out of scope.</p>
     </div>
   </section>
 
   <footer class="disclaimer">
-    Analyse assistée par IA — validation humaine requise.
+    AI-assisted analysis — human validation required.
   </footer>
 </main>
 
@@ -344,14 +344,14 @@
   var MAX_IMAGES = 10;
   var POLL_MS = 2000;
 
-  // Les étapes que le serveur sait réellement observer. La lecture du média,
-  // la confrontation au référentiel et l'évaluation de la criticité ont lieu
-  // dans un seul appel au moteur : elles partagent l'étape « analyse ».
+  // The stages the server can actually observe. Reading the media, auditing
+  // against the referential and assessing severity happen inside one engine
+  // call: they share the "analyse" stage.
   var STAGES = [
-    { key: "reception",   name: "Lecture du média" },
-    { key: "analyse",     name: "Confrontation au référentiel" },
-    { key: "analyse",     name: "Évaluation de la criticité" },
-    { key: "assignation", name: "Assignation des responsables" }
+    { key: "reception",   name: "Reading the media" },
+    { key: "analyse",     name: "Auditing against the referential" },
+    { key: "analyse",     name: "Assessing severity" },
+    { key: "assignation", name: "Assigning owners" }
   ];
   var ORDER = ["reception", "analyse", "assignation", "termine"];
 
@@ -377,7 +377,7 @@
     referentiels: document.getElementById("referentiels")
   };
 
-  // Null tant que l'auditeur n'impose rien : l'agent détecte alors le secteur.
+  // Null until the auditor forces one: the agent then detects the sector.
   var referentiel = null;
   var loadedReferentiels = false;
 
@@ -398,12 +398,12 @@
   }
 
   function humanSize(bytes) {
-    if (bytes < 1024) { return bytes + " o"; }
-    if (bytes < 1024 * 1024) { return Math.round(bytes / 1024) + " Ko"; }
-    return (bytes / (1024 * 1024)).toFixed(1) + " Mo";
+    if (bytes < 1024) { return bytes + " B"; }
+    if (bytes < 1024 * 1024) { return Math.round(bytes / 1024) + " KB"; }
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   }
 
-  // --- secteur imposé (facultatif) ---------------------------------------
+  // --- forced sector (optional) -------------------------------------------
 
   function renderReferentiels(entries) {
     el.referentiels.textContent = "";
@@ -448,33 +448,33 @@
       .then(renderReferentiels)
       .catch(function () {
         loadedReferentiels = false;
-        showError(el.uploadError, "Les secteurs n'ont pas pu être chargés.");
+        showError(el.uploadError, "The sectors could not be loaded.");
       });
   }
 
   // --- fichiers -----------------------------------------------------------
 
   function validate(list) {
-    if (list.length === 0) { return "Ajoutez au moins un fichier."; }
+    if (list.length === 0) { return "Add at least one file."; }
     var bad = list.filter(function (f) {
       return VIDEO_TYPES.indexOf(f.type) < 0 && IMAGE_TYPES.indexOf(f.type) < 0;
     });
     if (bad.length) {
-      return "Format non accepté : " + bad.map(function (f) { return f.name; }).join(", ") +
-        ". Formats acceptés : MP4, MOV, JPEG, PNG.";
+      return "Unsupported format: " + bad.map(function (f) { return f.name; }).join(", ") +
+        ". Accepted formats: MP4, MOV, JPEG, PNG.";
     }
     var tooBig = list.filter(function (f) { return f.size > MAX_BYTES; });
     if (tooBig.length) {
-      return "Fichier trop volumineux (200 Mo maximum) : " +
+      return "File too large (200 MB maximum): " +
         tooBig.map(function (f) { return f.name; }).join(", ") + ".";
     }
     var videos = list.filter(function (f) { return VIDEO_TYPES.indexOf(f.type) >= 0; });
     var images = list.filter(function (f) { return IMAGE_TYPES.indexOf(f.type) >= 0; });
     if (videos.length && images.length) {
-      return "Envoyez soit une vidéo, soit des photos, mais pas les deux.";
+      return "Send either one video or photos, not both.";
     }
-    if (videos.length > 1) { return "Une seule vidéo par inspection."; }
-    if (images.length > MAX_IMAGES) { return "10 photos au maximum par inspection."; }
+    if (videos.length > 1) { return "One video per inspection."; }
+    if (images.length > MAX_IMAGES) { return "At most 10 photos per inspection."; }
     return null;
   }
 
@@ -493,7 +493,7 @@
       var row = node("li");
       row.appendChild(node("span", "fname", file.name));
       row.appendChild(node("span", "fsize", humanSize(file.size)));
-      var remove = node("button", "remove", "Retirer");
+      var remove = node("button", "remove", "Remove");
       remove.type = "button";
       remove.addEventListener("click", function () {
         chosen.splice(index, 1);
@@ -516,8 +516,8 @@
     var problem = validate(files);
     if (problem) { showError(el.uploadError, problem); return; }
 
-    // Le secteur n'est envoyé que si l'auditeur l'a imposé ; sinon l'agent
-    // le détermine lui-même à partir du média.
+    // The sector is only sent when the auditor forced it; otherwise the
+    // agent determines it from the media itself.
     var form = new FormData();
     if (referentiel) { form.append("referentiel", referentiel); }
     files.forEach(function (file) { form.append("files", file, file.name); });
@@ -530,7 +530,7 @@
       .then(function (response) {
         return response.json().then(function (body) {
           if (!response.ok) {
-            throw new Error(readDetail(body) || "L'envoi a échoué.");
+            throw new Error(readDetail(body) || "The upload failed.");
           }
           return body;
         });
@@ -556,7 +556,7 @@
   // --- progression --------------------------------------------------------
 
   function startProgress(id) {
-    // La référence de dossier n'existe qu'une fois l'inspection créée.
+    // The case reference only exists once the inspection is created.
     el.dossierRef.textContent = id;
     el.dossier.hidden = false;
     el.uploadSection.hidden = true;
@@ -589,7 +589,7 @@
   function tickElapsed() {
     if (!startedAt) { return; }
     var seconds = Math.round((Date.now() - startedAt) / 1000);
-    el.elapsed.textContent = "Temps écoulé : " + seconds + " s";
+    el.elapsed.textContent = "Elapsed: " + seconds + " s";
   }
 
   function stop() {
@@ -600,7 +600,7 @@
     fetch("/inspections/" + encodeURIComponent(id))
       .then(function (response) {
         return response.json().then(function (body) {
-          if (!response.ok) { throw new Error(readDetail(body) || "Suivi indisponible."); }
+          if (!response.ok) { throw new Error(readDetail(body) || "Tracking unavailable."); }
           return body;
         });
       })
@@ -608,32 +608,32 @@
         if (state.status === "done") {
           stop();
           renderStages("termine");
-          el.progressTitle.textContent = "Analyse terminée";
-          el.progressSub.textContent = "Redirection vers l'écran de validation…";
+          el.progressTitle.textContent = "Analysis complete";
+          el.progressSub.textContent = "Redirecting to the validation screen…";
           window.location.href = "/review/" + encodeURIComponent(id);
           return;
         }
         if (state.status === "failed") {
           stop();
           renderStages(state.stage || "reception", true);
-          el.progressTitle.textContent = "L'analyse n'a pas abouti";
-          el.progressSub.textContent = "Aucun constat n'a été produit.";
+          el.progressTitle.textContent = "The analysis did not complete";
+          el.progressSub.textContent = "No findings were produced.";
           el.elapsed.textContent = "";
-          showFailure(state.error || "L'analyse a échoué.");
+          showFailure(state.error || "The analysis failed.");
           return;
         }
         renderStages(state.stage || "reception");
       })
       .catch(function (error) {
-        // Une interruption de suivi n'annule pas l'analyse : on réessaie.
-        el.elapsed.textContent = "Suivi interrompu (" + error.message + "), nouvelle tentative…";
+        // A tracking interruption does not cancel the analysis: retry.
+        el.elapsed.textContent = "Tracking interrupted (" + error.message + "), retrying…";
       });
   }
 
   function showFailure(message) {
     el.progressError.textContent = "";
     el.progressError.appendChild(node("div", "failure", message));
-    var again = node("button", "primary", "Réessayer");
+    var again = node("button", "primary", "Retry");
     again.type = "button";
     again.style.marginTop = "14px";
     again.addEventListener("click", function () { window.location.reload(); });
@@ -668,17 +668,17 @@
     var opening = el.manualPanel.hidden;
     el.manualPanel.hidden = !opening;
     el.manual.textContent = opening
-      ? "Masquer le choix manuel" : "Choisir le secteur manuellement";
+      ? "Hide manual choice" : "Choose the sector manually";
     if (opening) { loadReferentiels(); }
   });
   el.manualClear.addEventListener("click", clearSelection);
 
   el.example.addEventListener("click", function () {
     el.example.disabled = true;
-    el.example.textContent = "Chargement de l'exemple…";
+    el.example.textContent = "Loading the example…";
     fetch("/static/demo/chantier-exemple.jpg")
       .then(function (response) {
-        if (!response.ok) { throw new Error("Exemple indisponible."); }
+        if (!response.ok) { throw new Error("Example unavailable."); }
         return response.blob();
       })
       .then(function (blob) {
@@ -689,7 +689,7 @@
       })
       .catch(function (error) {
         el.example.disabled = false;
-        el.example.textContent = "Essayer avec un exemple";
+        el.example.textContent = "Try with an example";
         showError(el.uploadError, error.message);
       });
   });

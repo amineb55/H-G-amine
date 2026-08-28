@@ -12,11 +12,11 @@ WHAT TO RETURN
   honest rather than generous. A scene that could plausibly be two different
   sectors, a shot too dark or too close to place, or an environment outside
   the list, all deserve a low score.
-- justification : one short sentence IN FRENCH naming what you actually
+- justification : one short sentence IN ENGLISH naming what you actually
   recognised in the media — the objects, the setting, the activity that led
-  you to your answer. For example "Plateau de bureaux paysager : postes
-  informatiques, cloisons vitrées, éclairage tertiaire." Write it even when
-  you return null, so the reader understands what was seen.
+  you to your answer. For example "Open-plan office floor: computer
+  workstations, glazed partitions, suspended ceiling lighting." Write it even
+  when you return null, so the reader understands what was seen.
 
 RULES
 - Never stretch a scene to fit a sector in the list. A warehouse is not an
@@ -30,4 +30,4 @@ RULES
   sector would produce findings that do not apply.
 
 Return JSON only, matching the requested schema. The justification is in
-French; the referentiel key is one of the listed keys, or null.
+English; the referentiel key is one of the listed keys, or null.

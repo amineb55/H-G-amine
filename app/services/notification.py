@@ -31,16 +31,16 @@ from app.services.notifiers.email_notifier import send as send_email
 
 logger = logging.getLogger(__name__)
 
-IMMEDIATE_SUBJECT_PREFIX = "[ARRET IMMEDIAT]"
+IMMEDIATE_SUBJECT_PREFIX = "[IMMEDIATE STOP]"
 
 # Evidence larger than this is left to the attached report rather than inlined.
 MAX_INLINE_IMAGE_BYTES = 2 * 1024 * 1024
 
 SEVERITY_LABEL: dict[str, str] = {
-    Severity.ARRET_IMMEDIAT.value: "Arrêt immédiat",
-    Severity.CRITIQUE.value: "Critique",
-    Severity.MAJEUR.value: "Majeur",
-    Severity.MINEUR.value: "Mineur",
+    Severity.ARRET_IMMEDIAT.value: "Immediate stop",
+    Severity.CRITIQUE.value: "Critical",
+    Severity.MAJEUR.value: "Major",
+    Severity.MINEUR.value: "Minor",
 }
 SEVERITY_COLOR: dict[str, str] = {
     Severity.ARRET_IMMEDIAT.value: "#b3261e",
@@ -83,13 +83,13 @@ def group_by_recipient(
 
 def build_subject(result: EnrichedInspectionResult, kind: EmailKind, count: int) -> str:
     """Subject line for one email."""
-    noun = "constat" if count == 1 else "constats"
+    noun = "finding" if count == 1 else "findings"
     if kind is EmailKind.IMMEDIATE:
         return (
             f"{IMMEDIATE_SUBJECT_PREFIX} Inspection {result.inspection_id} — "
-            f"{count} {noun} à traiter immédiatement"
+            f"{count} {noun} requiring immediate action"
         )
-    return f"Inspection {result.inspection_id} — {count} {noun} à traiter"
+    return f"Inspection {result.inspection_id} — {count} {noun} to address"
 
 
 def _inline_image(inspection_id: str, finding: EnrichedFinding) -> str:
@@ -105,7 +105,7 @@ def _inline_image(inspection_id: str, finding: EnrichedFinding) -> str:
         logger.warning("Could not inline evidence %s", finding.evidence_image, exc_info=True)
         return ""
     return (
-        f'<img src="data:image/jpeg;base64,{encoded}" alt="Image probante" '
+        f'<img src="data:image/jpeg;base64,{encoded}" alt="Evidence image" '
         f'style="width:100%;max-width:520px;border-radius:6px;'
         f'border:1px solid #dfe3e8;margin-bottom:10px" />'
     )
@@ -118,10 +118,10 @@ def _deadline_phrase(findings: list[EnrichedFinding]) -> str:
     delta = (soonest - today).days
     stamp = soonest.strftime("%d/%m/%Y")
     if delta <= 0:
-        return f"aujourd'hui ({stamp})"
+        return f"today ({stamp})"
     if delta == 1:
-        return f"demain ({stamp})"
-    return f"sous {delta} jours (au plus tard le {stamp})"
+        return f"by tomorrow ({stamp})"
+    return f"within {delta} days (by {stamp})"
 
 
 def _opening(kind: EmailKind, findings: list[EnrichedFinding]) -> str:
@@ -131,21 +131,21 @@ def _opening(kind: EmailKind, findings: list[EnrichedFinding]) -> str:
     the deadline in prose, rather than leaving them to a table further down.
     """
     count = len(findings)
-    noun = "constat" if count == 1 else "constats"
+    noun = "finding" if count == 1 else "findings"
 
     if kind is EmailKind.IMMEDIATE:
         return (
-            f"Vous devez faire <b>cesser immédiatement</b> l'activité concernée par "
-            f"{'ce constat' if count == 1 else f'ces {count} constats'}. "
-            "Aucun délai n'est accordé : "
-            "l'action est attendue dès réception de ce message."
-            "<br/>La reprise ne peut intervenir qu'une fois la situation corrigée et vérifiée."
+            f"You must <b>stop the affected work immediately</b> for "
+            f"{'this finding' if count == 1 else f'these {count} findings'}. "
+            "No grace period applies: action is expected on receipt of this "
+            "message.<br/>Work may only resume once the situation has been "
+            "corrected and verified."
         )
     return (
-        f"{count} {noun} vous {'est attribué' if count == 1 else 'sont attribués'} "
-        f"à la suite de cette inspection. La correction est attendue "
+        f"{count} {noun} {'has' if count == 1 else 'have'} been assigned to you "
+        f"following this inspection. Correction is expected "
         f"<b>{_deadline_phrase(findings)}</b>."
-        "<br/>Aucun de ces constats n'impose l'arrêt de l'activité."
+        "<br/>None of these findings requires work to stop."
     )
 
 
@@ -156,18 +156,18 @@ def _finding_block(inspection_id: str, finding: EnrichedFinding) -> str:
     label = SEVERITY_LABEL.get(severity, severity)
 
     rows = [
-        ("Échéance", escape(str(finding.deadline_date)) + (" — immédiat" if finding.immediate else "")),
-        ("Règle", escape(finding.rule_id) + (f" — {escape(finding.rule_title)}" if finding.rule_title else "")),
-        ("Clause ISO 45001", escape(finding.iso_45001_clause)),
-        ("Horodatage", f"t+{finding.timestamp_sec}s"),
-        ("Confiance", f"{round(finding.confidence * 100)}%"),
+        ("Due", escape(str(finding.deadline_date)) + (" — immediate" if finding.immediate else "")),
+        ("Rule", escape(finding.rule_id) + (f" — {escape(finding.rule_title)}" if finding.rule_title else "")),
+        ("ISO 45001 clause", escape(finding.iso_45001_clause)),
+        ("Timestamp", f"t+{finding.timestamp_sec}s"),
+        ("Confidence", f"{round(finding.confidence * 100)}%"),
     ]
     if finding.requires_review:
-        rows.append(("Vigilance", "Confiance faible — approuvé par un valideur après vérification"))
+        rows.append(("Caution", "Low confidence — approved by a validator after review"))
     if finding.source is FindingSource.HUMAN:
-        rows.append(("Origine", "Constat ajouté par l'auditeur"))
+        rows.append(("Origin", "Finding added by the auditor"))
     elif finding.edited_by_human:
-        rows.append(("Origine", "Détecté par l'analyse, corrigé par l'auditeur"))
+        rows.append(("Origin", "Detected by the analysis, corrected by the auditor"))
 
     detail = "".join(
         f'<tr><td style="padding:3px 12px 3px 0;color:#5c6470;font-size:13px;'
@@ -200,9 +200,9 @@ def build_html(
     recipient_name: str | None,
 ) -> str:
     """Build the body of one recipient's email."""
-    greeting = f"Bonjour {escape(recipient_name)}," if recipient_name else "Bonjour,"
+    greeting = f"Hello {escape(recipient_name)}," if recipient_name else "Hello,"
     count = len(findings)
-    noun = "constat" if count == 1 else "constats"
+    noun = "finding" if count == 1 else "findings"
 
     opening = _opening(kind, findings)
 
@@ -211,11 +211,11 @@ def build_html(
             '<div style="background:#b3261e;color:#ffffff;padding:14px 16px;'
             'border-radius:6px;font-weight:700;text-transform:uppercase;'
             'letter-spacing:0.04em;margin-bottom:16px">'
-            "Arrêt immédiat de l'activité"
+            "Work must stop immediately"
             '<div style="font-weight:400;text-transform:none;letter-spacing:0;'
             'font-size:13px;margin-top:4px">'
-            f"{count} {noun} {'impose' if count == 1 else 'imposent'} "
-            "l'arrêt immédiat des travaux concernés.</div></div>"
+            f"{count} {noun} require{'s' if count == 1 else ''} "
+            "the affected work to stop immediately.</div></div>"
         )
     else:
         banner = ""
@@ -227,7 +227,7 @@ def build_html(
         'Roboto,Helvetica,Arial,sans-serif;background:#f5f6f8;padding:24px;'
         'color:#1a1d21">'
         '<div style="max-width:640px;margin:0 auto">'
-        f'<h1 style="font-size:19px;margin:0 0 4px">Inspection HSE — '
+        f'<h1 style="font-size:19px;margin:0 0 4px">HSE inspection — '
         f"{escape(inspection_prompt.referentiel_label(result.referentiel))}</h1>"
         f'<div style="font-size:13px;color:#5c6470;margin-bottom:16px">'
         f"Inspection {escape(result.inspection_id)} · {escape(result.scene_detected)}</div>"
@@ -237,9 +237,9 @@ def build_html(
         f"{blocks}"
         '<p style="font-size:12px;color:#868e9a;border-top:1px solid #dfe3e8;'
         'padding-top:12px;margin-top:20px">'
-        "Analyse assistée par IA, validée par un auditeur avant envoi. "
-        "Le rapport complet est joint à ce message en PDF. "
-        "Répondez à ce message pour signaler une erreur.</p>"
+        "AI-assisted analysis, validated by an auditor before sending. "
+        "The full report is attached to this message as a PDF. "
+        "Reply to this message to report an error.</p>"
         "</div></div>"
     )
 

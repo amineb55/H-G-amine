@@ -100,7 +100,7 @@ def referentiel_label(referentiel: str) -> str:
     producing when a catalog is missing its label.
     """
     if referentiel == UNSUPPORTED:
-        return "Secteur non couvert"
+        return "Sector not covered"
     try:
         return load_catalog(referentiel).label
     except PromptError:

@@ -75,7 +75,7 @@ class Settings(BaseSettings):
     notifier_sender_email: str = Field(
         "", validation_alias=AliasChoices("NOTIFIER_SENDER_EMAIL", "BREVO_SENDER_EMAIL")
     )
-    notifier_sender_name: str = "Inspection HSE"
+    notifier_sender_name: str = "HSE Audit Agent"
     notifier_timeout_seconds: int = 30
     # Leave empty to use the notifier's own endpoint.
     notifier_api_url: str = ""

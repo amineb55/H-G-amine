@@ -34,13 +34,13 @@ from app.services import inspection_prompt, storage
 
 logger = logging.getLogger(__name__)
 
-FOOTER = "Analyse assistée par IA, validée par un auditeur."
+FOOTER = "AI-assisted analysis, validated by an auditor."
 
 SEVERITY_LABEL: dict[str, str] = {
-    Severity.ARRET_IMMEDIAT.value: "Arrêt immédiat",
-    Severity.CRITIQUE.value: "Critique",
-    Severity.MAJEUR.value: "Majeur",
-    Severity.MINEUR.value: "Mineur",
+    Severity.ARRET_IMMEDIAT.value: "Immediate stop",
+    Severity.CRITIQUE.value: "Critical",
+    Severity.MAJEUR.value: "Major",
+    Severity.MINEUR.value: "Minor",
 }
 SEVERITY_COLOR: dict[str, colors.Color] = {
     Severity.ARRET_IMMEDIAT.value: colors.HexColor("#b3261e"),
@@ -78,7 +78,7 @@ def _styles() -> dict[str, ParagraphStyle]:
 
 
 def _format_datetime(moment: datetime | None) -> str:
-    return moment.strftime("%d/%m/%Y à %H:%M") if moment else "non renseignée"
+    return moment.strftime("%d/%m/%Y at %H:%M") if moment else "not recorded"
 
 
 def retained_findings(result: EnrichedInspectionResult) -> list[EnrichedFinding]:
@@ -98,10 +98,10 @@ def retained_findings(result: EnrichedInspectionResult) -> list[EnrichedFinding]
 def _origin_label(finding: EnrichedFinding) -> str:
     """How the finding got onto the record, in plain French."""
     if finding.source is FindingSource.HUMAN:
-        return "Ajouté par l'auditeur"
+        return "Added by the auditor"
     if finding.edited_by_human:
-        return "Détecté par l'analyse, corrigé par l'auditeur"
-    return "Détecté par l'analyse, validé par l'auditeur"
+        return "Detected by the analysis, corrected by the auditor"
+    return "Detected by the analysis, approved by the auditor"
 
 
 def _header(
@@ -119,9 +119,9 @@ def _header(
     )
 
     story = [
-        Paragraph("Rapport d'inspection HSE", style["title"]),
+        Paragraph("HSE inspection report", style["title"]),
         Paragraph(
-            f"Référentiel : <b>{escape(inspection_prompt.referentiel_label(result.referentiel))}"
+            f"Referential: <b>{escape(inspection_prompt.referentiel_label(result.referentiel))}"
             f"</b> &nbsp;·&nbsp; Inspection {escape(result.inspection_id)}",
             style["sub"],
         ),
@@ -129,10 +129,10 @@ def _header(
     ]
 
     rows = [
-        ["Prise de vue", _format_datetime(result.captured_at)],
-        ["Rapport édité le", date.today().strftime("%d/%m/%Y")],
-        ["Scène analysée", result.scene_detected or "non renseignée"],
-        ["Constats retenus", str(len(retained))],
+        ["Captured", _format_datetime(result.captured_at)],
+        ["Report issued", date.today().strftime("%d/%m/%Y")],
+        ["Scene analysed", result.scene_detected or "not recorded"],
+        ["Findings retained", str(len(retained))],
     ]
     table = Table([[Paragraph(k, style["label"]), Paragraph(v, style["value"])] for k, v in rows],
                   colWidths=[38 * mm, 125 * mm])
@@ -148,14 +148,13 @@ def _header(
     excluded: list[str] = []
     if rejected:
         excluded.append(
-            f"{rejected} constat{'s' if rejected > 1 else ''} "
-            f"rejeté{'s' if rejected > 1 else ''} par l'auditeur, "
-            "non retenu" + ("s" if rejected > 1 else "") + " dans ce rapport."
+            f"{rejected} finding{'s' if rejected > 1 else ''} rejected by the "
+            "auditor, not retained in this report."
         )
     if pending:
         excluded.append(
-            f"{pending} constat{'s' if pending > 1 else ''} en attente de validation, "
-            "non retenu" + ("s" if pending > 1 else "") + " dans ce rapport."
+            f"{pending} finding{'s' if pending > 1 else ''} awaiting validation, "
+            "not retained in this report."
         )
     if excluded:
         story.append(Spacer(1, 8))
@@ -180,8 +179,8 @@ def _header(
 
     if any(f.immediate for f in retained):
         stop = Table([[Paragraph(
-            "<b>ARRÊT IMMÉDIAT DE L'ACTIVITÉ</b><br/>"
-            "Un ou plusieurs constats imposent l'arrêt immédiat des travaux concernés.",
+            "<b>WORK MUST STOP IMMEDIATELY</b><br/>"
+            "One or more findings require the affected work to stop immediately.",
             ParagraphStyle("stop", fontSize=10, leading=14, textColor=colors.white),
         )]], colWidths=[163 * mm])
         stop.setStyle(TableStyle([
@@ -238,25 +237,25 @@ def _finding_section(
     if picture is not None:
         block.extend([picture, Spacer(1, 8)])
     else:
-        block.extend([Paragraph("Aucune image probante retenue pour ce constat.",
+        block.extend([Paragraph("No evidence image retained for this finding.",
                                 style["label"]), Spacer(1, 8)])
 
     rows = [
-        ("Gravité retenue", SEVERITY_LABEL.get(severity, severity)),
-        ("Échéance", finding.deadline_date.strftime("%d/%m/%Y")
-         + (" — immédiat" if finding.immediate else "")),
-        ("Responsable", finding.assigned_name or "Non affecté"),
-        ("Clause ISO 45001", finding.iso_45001_clause or "—"),
-        ("Origine", _origin_label(finding)),
+        ("Severity retained", SEVERITY_LABEL.get(severity, severity)),
+        ("Due", finding.deadline_date.strftime("%d/%m/%Y")
+         + (" — immediate" if finding.immediate else "")),
+        ("Owner", finding.assigned_name or "Unassigned"),
+        ("ISO 45001 clause", finding.iso_45001_clause or "—"),
+        ("Origin", _origin_label(finding)),
     ]
     if finding.source is not FindingSource.HUMAN:
-        rows.append(("Confiance de l'analyse", f"{round(finding.confidence * 100)}%"))
+        rows.append(("Analysis confidence", f"{round(finding.confidence * 100)}%"))
     if finding.edited_by_human and finding.original_severity is not None:
-        rows.append(("Gravité initiale de l'analyse",
+        rows.append(("Severity first reported",
                      SEVERITY_LABEL.get(finding.original_severity.value,
                                         finding.original_severity.value)))
     if finding.edited_by_human and finding.original_observation:
-        rows.append(("Observation initiale de l'analyse", finding.original_observation))
+        rows.append(("Observation first reported", finding.original_observation))
 
     table = Table([[Paragraph(k, style["label"]), Paragraph(v, style["value"])] for k, v in rows],
                   colWidths=[45 * mm, 118 * mm])
@@ -287,14 +286,14 @@ def build_pdf(result: EnrichedInspectionResult) -> bytes:
     document = SimpleDocTemplate(
         buffer, pagesize=A4,
         leftMargin=20 * mm, rightMargin=20 * mm, topMargin=18 * mm, bottomMargin=22 * mm,
-        title=f"Rapport d'inspection {result.inspection_id}",
-        author="Inspection HSE",
+        title=f"Inspection report {result.inspection_id}",
+        author="HSE Audit Agent",
     )
 
     retained = retained_findings(result)
     story = _header(result, retained, style)
     if not retained:
-        story.append(Paragraph("Aucune non-conformité retenue à l'issue de la validation.",
+        story.append(Paragraph("No non-conformity retained after validation.",
                                style["body"]))
     for index, finding in enumerate(retained):
         story.append(KeepTogether(_finding_section(result.inspection_id, index, finding, style)))
@@ -305,4 +304,4 @@ def build_pdf(result: EnrichedInspectionResult) -> bytes:
 
 def report_filename(result: EnrichedInspectionResult) -> str:
     """File name offered for download and used as the email attachment name."""
-    return f"rapport-inspection-{result.inspection_id}.pdf"
+    return f"inspection-report-{result.inspection_id}.pdf"

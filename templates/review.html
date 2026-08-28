@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Revue d'inspection</title>
+<title>Inspection review</title>
 <link rel="icon" href="data:,">
 <style>
   :root {
@@ -26,9 +26,9 @@
     --radius: 8px;
   }
   * { box-sizing: border-box; }
-  /* Une règle de classe qui pose display: flex l'emporte sur le display:none
-     que le navigateur applique à [hidden] : sans ceci, masquer un élément par
-     l'attribut hidden reste sans effet. */
+  /* A class rule setting display: flex outranks the display:none the
+     browser applies to [hidden]: without this, hiding an element through the
+     hidden attribute has no effect. */
   [hidden] { display: none !important; }
 
   body {
@@ -210,27 +210,27 @@
 <body>
 <div class="wrap">
   <header class="page">
-    <h1>Revue d'inspection</h1>
+    <h1>Inspection review</h1>
     <div class="meta">
       <code id="inspection-id"></code>
       <span id="meta-rest"></span>
     </div>
     <div class="disclaimer">
-      Analyse assistée par IA — validation humaine requise. Rien n'est transmis
-      tant qu'un valideur n'a pas approuvé.
+      AI-assisted analysis — human validation required. Nothing is sent until
+      a validator has approved it.
     </div>
   </header>
 
   <div class="stop-banner" id="stop-banner">
-    Arrêt immédiat de l'activité
+    Work must stop immediately
     <small id="stop-detail"></small>
   </div>
 
   <div class="summary" id="summary"></div>
   <div class="toolbar" id="toolbar" hidden>
     <a class="button" id="pdf-link" href="#" target="_blank" rel="noopener">
-      Télécharger le rapport PDF</a>
-    <button id="add-btn">Ajouter un constat</button>
+      Download the PDF report</a>
+    <button id="add-btn">Add a finding</button>
   </div>
   <div id="add-form"></div>
   <div id="findings"></div>
@@ -238,11 +238,11 @@
 
   <div class="dispatch-bar" id="dispatch-bar" hidden>
     <div class="cc-field">
-      <label for="cc-input">Copie à (adresses séparées par des virgules)</label>
-      <input type="text" id="cc-input" placeholder="prenom.nom@exemple.fr, autre@exemple.fr">
+      <label for="cc-input">Cc (comma-separated addresses)</label>
+      <input type="text" id="cc-input" placeholder="first.last@example.com, other@example.com">
       <div class="cc-error" id="cc-error" hidden></div>
     </div>
-    <button class="primary" id="dispatch-btn">Transmettre les constats approuvés</button>
+    <button class="primary" id="dispatch-btn">Dispatch approved findings</button>
     <span class="dispatch-note" id="dispatch-note"></span>
   </div>
   <pre class="result" id="dispatch-result" hidden></pre>
@@ -257,8 +257,8 @@
     arret_immediat: "arret", critique: "critique", majeur: "majeur", mineur: "mineur"
   };
   var SEVERITY_LABEL = {
-    arret_immediat: "Arrêt immédiat", critique: "Critique",
-    majeur: "Majeur", mineur: "Mineur"
+    arret_immediat: "Immediate stop", critique: "Critical",
+    majeur: "Major", mineur: "Minor"
   };
 
   var id = decodeURIComponent(window.location.pathname.split("/").pop());
@@ -286,11 +286,11 @@
   };
 
   var SEVERITY_CHOICES = [
-    ["arret_immediat", "Arrêt immédiat"], ["critique", "Critique"],
-    ["majeur", "Majeur"], ["mineur", "Mineur"]
+    ["arret_immediat", "Immediate stop"], ["critique", "Critical"],
+    ["majeur", "Major"], ["mineur", "Minor"]
   ];
   var options = { rules: [], roles: [], referentiels: [] };
-  var editing = null;   // index du constat en cours d'édition
+  var editing = null;   // index of the finding being edited
 
   function select(name, choices, current) {
     var sel = node("select");
@@ -330,7 +330,7 @@
     return fetch(url, options).then(function (response) {
       return response.json().then(function (body) {
         if (!response.ok) {
-          throw new Error(body && body.detail ? body.detail : "La requête a échoué");
+          throw new Error(body && body.detail ? body.detail : "The request failed");
         }
         return body;
       });
@@ -339,7 +339,7 @@
 
   function renderSummary(summary, result) {
     el.summary.textContent = "";
-    el.summary.appendChild(chip(null, "Constats", summary.total));
+    el.summary.appendChild(chip(null, "Findings", summary.total));
     SEVERITIES.forEach(function (severity) {
       var count = (summary.by_severity || {})[severity] || 0;
       if (count > 0) {
@@ -347,17 +347,17 @@
       }
     });
     if (summary.requires_review > 0) {
-      el.summary.appendChild(chip(null, "Confiance faible", summary.requires_review));
+      el.summary.appendChild(chip(null, "Low confidence", summary.requires_review));
     }
-    el.summary.appendChild(chip(null, "Approuvés", summary.approved));
-    el.summary.appendChild(chip(null, "Rejetés", summary.rejected));
-    el.summary.appendChild(chip(null, "En attente", summary.pending));
+    el.summary.appendChild(chip(null, "Approved", summary.approved));
+    el.summary.appendChild(chip(null, "Rejected", summary.rejected));
+    el.summary.appendChild(chip(null, "Pending", summary.pending));
 
     if (summary.has_immediate_stop) {
       var stopping = result.findings.filter(function (f) { return f.immediate; }).length;
       el.bannerDetail.textContent =
-        stopping + (stopping === 1 ? " constat impose" : " constats imposent") +
-        " l'arrêt immédiat des travaux.";
+        stopping + (stopping === 1 ? " finding requires" : " findings require") +
+        " the affected work to stop immediately.";
       el.banner.style.display = "block";
     } else {
       el.banner.style.display = "none";
@@ -381,21 +381,21 @@
       SEVERITY_LABEL[finding.observed_severity] || finding.observed_severity));
     head.appendChild(node("span", "rule-id", finding.rule_id));
     if (finding.requires_review) {
-      head.appendChild(node("span", "badge review", "Confiance faible — à vérifier"));
+      head.appendChild(node("span", "badge review", "Low confidence — to verify"));
     }
     if (finding.validation_status !== "pending") {
       head.appendChild(node("span", "badge " + finding.validation_status,
-        finding.validation_status === "approved" ? "Approuvé" : "Rejeté"));
+        finding.validation_status === "approved" ? "Approved" : "Rejected"));
     }
     if (finding.source === "human") {
-      head.appendChild(node("span", "badge manual", "Ajouté par l'auditeur"));
+      head.appendChild(node("span", "badge manual", "Added by the auditor"));
     } else if (finding.edited_by_human) {
-      head.appendChild(node("span", "badge edited", "Corrigé par l'auditeur"));
+      head.appendChild(node("span", "badge edited", "Corrected by the auditor"));
     }
     if (finding.dispatch_status === "sent") {
-      head.appendChild(node("span", "badge queued", "Transmis"));
+      head.appendChild(node("span", "badge queued", "Sent"));
     } else if (finding.dispatch_status === "failed") {
-      head.appendChild(node("span", "badge failed", "Échec d'envoi"));
+      head.appendChild(node("span", "badge failed", "Send failed"));
     }
     head.appendChild(node("span", "spacer"));
     head.appendChild(node("span", "ts", "t+" + finding.timestamp_sec + "s"));
@@ -405,7 +405,7 @@
     if (finding.evidence_image) {
       var img = node("img", "evidence");
       img.src = base + "/evidence/" + encodeURIComponent(finding.evidence_image);
-      img.alt = "Image probante du constat";
+      img.alt = "Evidence image for the finding";
       img.loading = "lazy";
       card.appendChild(img);
     }
@@ -415,29 +415,29 @@
     }
 
     var facts = node("dl", "facts");
-    facts.appendChild(fact("Responsable",
-      finding.assigned_name || "Non affecté"));
-    facts.appendChild(fact("Notifié",
-      (finding.notify_emails || []).join(", ") || "Personne"));
-    facts.appendChild(fact("Échéance",
-      finding.immediate ? finding.deadline_date + " — immédiat" : finding.deadline_date,
+    facts.appendChild(fact("Owner",
+      finding.assigned_name || "Unassigned"));
+    facts.appendChild(fact("Notified",
+      (finding.notify_emails || []).join(", ") || "Nobody"));
+    facts.appendChild(fact("Due",
+      finding.immediate ? finding.deadline_date + " — immediate" : finding.deadline_date,
       finding.immediate ? "due now" : "due"));
-    facts.appendChild(fact("Confiance", Math.round(finding.confidence * 100) + "%",
+    facts.appendChild(fact("Confidence", Math.round(finding.confidence * 100) + "%",
       finding.requires_review ? "confidence low" : "confidence"));
     facts.appendChild(fact("ISO 45001", finding.iso_45001_clause));
-    facts.appendChild(fact("Statut",
-      finding.status === "nc" ? "Non-conformité" : "À vérifier"));
+    facts.appendChild(fact("Status",
+      finding.status === "nc" ? "Non-conformity" : "To verify"));
     if (finding.dispatch_status === "sent" && finding.message_id) {
-      facts.appendChild(fact("Envoi", finding.message_id));
+      facts.appendChild(fact("Sent", finding.message_id));
     } else if (finding.dispatch_status === "failed" && finding.dispatch_error) {
-      facts.appendChild(fact("Échec", finding.dispatch_error, "failure"));
+      facts.appendChild(fact("Failed", finding.dispatch_error, "failure"));
     }
     card.appendChild(facts);
 
     var actions = node("div", "actions");
-    actions.appendChild(decisionButton("approve", "Approuver", index, finding));
-    actions.appendChild(decisionButton("reject", "Rejeter", index, finding));
-    var edit = node("button", "edit", editing === index ? "Annuler" : "Modifier");
+    actions.appendChild(decisionButton("approve", "Approve", index, finding));
+    actions.appendChild(decisionButton("reject", "Reject", index, finding));
+    var edit = node("button", "edit", editing === index ? "Cancel" : "Edit");
     edit.addEventListener("click", function () {
       editing = editing === index ? null : index;
       render(state);
@@ -448,13 +448,13 @@
     if (finding.original_severity || finding.original_observation) {
       var was = [];
       if (finding.original_severity) {
-        was.push("gravité initiale : " + (SEVERITY_LABEL[finding.original_severity] ||
+        was.push("initial severity: " + (SEVERITY_LABEL[finding.original_severity] ||
           finding.original_severity));
       }
       if (finding.original_observation) {
-        was.push("observation initiale : « " + finding.original_observation + " »");
+        was.push("initial observation: \"" + finding.original_observation + "\"");
       }
-      card.appendChild(node("div", "original", "Analyse d'origine — " + was.join(" · ")));
+      card.appendChild(node("div", "original", "Original analysis — " + was.join(" · ")));
     }
     if (editing === index) { card.appendChild(editorFor(index, finding)); }
     return card;
@@ -465,19 +465,19 @@
     var row1 = node("div", "row");
 
     var sevBox = node("div");
-    sevBox.appendChild(node("label", null, "Gravité retenue"));
+    sevBox.appendChild(node("label", null, "Severity retained"));
     var sev = select("observed_severity", SEVERITY_CHOICES, finding.observed_severity);
     sevBox.appendChild(sev);
     row1.appendChild(sevBox);
 
     var ruleBox = node("div");
-    ruleBox.appendChild(node("label", null, "Règle"));
+    ruleBox.appendChild(node("label", null, "Rule"));
     var rule = select("rule_id", ruleChoices(), finding.rule_id);
     ruleBox.appendChild(rule);
     row1.appendChild(ruleBox);
 
     var roleBox = node("div");
-    roleBox.appendChild(node("label", null, "Responsable"));
+    roleBox.appendChild(node("label", null, "Owner"));
     var role = select("assigned_role", roleChoices(), finding.assigned_role);
     roleBox.appendChild(role);
     row1.appendChild(roleBox);
@@ -492,7 +492,7 @@
 
     var actions = node("div", "actions");
     actions.style.marginTop = "10px";
-    var save = node("button", "primary", "Enregistrer la correction");
+    var save = node("button", "primary", "Save correction");
     save.addEventListener("click", function () {
       var payload = {};
       if (sev.value !== finding.observed_severity) { payload.observed_severity = sev.value; }
@@ -518,19 +518,19 @@
 
   function addFormMarkup() {
     var box = node("div", "card");
-    box.appendChild(node("div", "title", "Ajouter un constat"));
+    box.appendChild(node("div", "title", "Add a finding"));
     var body = node("div", "editor");
     body.style.borderTop = "none";
     body.style.paddingTop = "0";
 
     var row = node("div", "row");
     var sevBox = node("div");
-    sevBox.appendChild(node("label", null, "Gravité retenue"));
+    sevBox.appendChild(node("label", null, "Severity retained"));
     var sev = select("observed_severity", SEVERITY_CHOICES, "majeur");
     sevBox.appendChild(sev); row.appendChild(sevBox);
 
     var ruleBox = node("div");
-    ruleBox.appendChild(node("label", null, "Règle"));
+    ruleBox.appendChild(node("label", null, "Rule"));
     var rule = select("rule_id", ruleChoices(), null);
     ruleBox.appendChild(rule); row.appendChild(ruleBox);
     body.appendChild(row);
@@ -538,12 +538,12 @@
     var obsBox = node("div");
     obsBox.appendChild(node("label", null, "Observation"));
     var obs = node("textarea");
-    obs.placeholder = "Décrivez ce que vous avez constaté sur le terrain.";
+    obs.placeholder = "Describe what you observed on site.";
     obsBox.appendChild(obs); body.appendChild(obsBox);
 
     var actions = node("div", "actions");
     actions.style.marginTop = "10px";
-    var save = node("button", "primary", "Enregistrer le constat");
+    var save = node("button", "primary", "Save finding");
     save.addEventListener("click", function () {
       if (!obs.value.trim()) { obs.focus(); return; }
       setBusy(true);
@@ -558,7 +558,7 @@
         .catch(showError)
         .then(function () { setBusy(false); });
     });
-    var cancel = node("button", null, "Annuler");
+    var cancel = node("button", null, "Cancel");
     cancel.addEventListener("click", function () { el.addForm.textContent = ""; });
     actions.appendChild(save); actions.appendChild(cancel);
     body.appendChild(actions);
@@ -602,34 +602,34 @@
 
   function undeterminedPanel(payload) {
     var box = node("div", "notice");
-    box.appendChild(node("div", "scope-title", "Secteur indéterminé"));
+    box.appendChild(node("div", "scope-title", "Sector undetermined"));
     box.appendChild(node("div", null,
-      "Le secteur n'a pas pu être déterminé avec certitude à partir du média. " +
-      "Aucun audit n'a été lancé : auditer avec les règles d'un mauvais secteur " +
-      "produirait des constats qui ne s'appliquent pas."));
+      "The sector could not be determined with confidence from the media. " +
+      "No audit was run: auditing against the wrong sector's rules would " +
+      "produce findings that do not apply."));
     var detection = payload.detection || {};
     if (detection.justification) {
       box.appendChild(node("div", "scope-detected",
-        "Reconnu dans le média : " + detection.justification +
-        " (confiance " + Math.round((detection.confidence || 0) * 100) + " %)"));
+        "Recognised in the media: " + detection.justification +
+        " (confidence " + Math.round((detection.confidence || 0) * 100) + "%)"));
     }
     if (payload.media_retained) {
       box.appendChild(node("div", "scope-detected",
-        "Le média est conservé temporairement, le temps que vous choisissiez un " +
-        "secteur. Il sera supprimé dès qu'une analyse aura été lancée, ou " +
-        "automatiquement passé ce délai."));
+        "The media is held temporarily while you choose a sector. It is " +
+        "deleted as soon as an analysis has run, or automatically once the " +
+        "hold expires."));
       box.appendChild(sectorChooser());
     } else {
       box.appendChild(node("div", "scope-detected",
-        "Le média n'est plus disponible : relancez une analyse avec un nouveau " +
-        "téléversement."));
+        "The media is no longer available: start a new analysis with a new " +
+        "upload."));
     }
     return box;
   }
 
   function sectorChooser() {
     var wrap = node("div", "chooser");
-    wrap.appendChild(node("div", "chooser-label", "Lancer l'audit avec le référentiel :"));
+    wrap.appendChild(node("div", "chooser-label", "Run the audit against:"));
     var row = node("div", "actions");
     (options.referentiels || []).forEach(function (entry) {
       var pick = node("button", null, entry.label);
@@ -655,7 +655,7 @@
     if (isNaN(d.getTime())) { return raw; }
     var pad = function (n) { return (n < 10 ? "0" : "") + n; };
     return pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear() +
-      " à " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+      " at " + pad(d.getHours()) + ":" + pad(d.getMinutes());
   }
 
   function loadReferentiels() {
@@ -665,21 +665,21 @@
       .then(function (list) {
         if (!list) { return; }
         options.referentiels = list;
-        // La liste peut arriver après le rendu : on ne redessine que s'il y a
-        // déjà un état, sinon le rendu initial s'en chargera.
+        // The list can arrive after the render: only redraw when a state
+        // already exists, otherwise the initial render will take care of it.
         if (state) { render(state); }
       })
       .catch(function () { /* le choix manuel reste possible via l'API */ });
   }
 
   function loadOptions(referentiel) {
-    // Une inspection au secteur indéterminé n'a pas de référentiel : il n'y a
-    // pas de catalogue de règles à charger.
+    // An inspection with an undetermined sector has no referential: there is
+    // no rule catalogue to load.
     if (!referentiel || options.rules.length) { return; }
     fetch("/referentiels/" + encodeURIComponent(referentiel) + "/options")
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (payload) { if (payload) { options = payload; } })
-      .catch(function () { /* l'édition reste possible sans les libellés */ });
+      .catch(function () { /* editing stays possible without the labels */ });
   }
 
   function parseCc() {
@@ -692,7 +692,7 @@
     list.forEach(function (address) {
       if (!pattern.test(address)) { bad.push(address); }
     });
-    if (bad.length) { throw new Error("Adresse invalide : " + bad.join(", ")); }
+    if (bad.length) { throw new Error("Invalid address: " + bad.join(", ")); }
     return list;
   }
 
@@ -705,17 +705,17 @@
     el.dispatchResult.hidden = true;
 
     var result = payload.result;
-    // Une analyse relancée depuis cet écran repasse par "processing" : on
-    // suit son avancement plutôt que de demander un rechargement manuel.
+    // An analysis re-run from this screen goes back through "processing":
+    // follow its progress rather than asking for a manual reload.
     if (payload.status === "processing") {
       el.toolbar.hidden = true;
-      el.metaRest.textContent = " · analyse en cours";
+      el.metaRest.textContent = " · analysis in progress";
       el.summary.textContent = "";
       el.findings.textContent = "";
       el.bar.hidden = true;
       el.empty.appendChild(node("div", "notice",
-        "Analyse en cours avec le référentiel choisi. Cet écran se met à jour " +
-        "automatiquement."));
+        "Analysis in progress with the chosen referential. This screen " +
+        "updates automatically."));
       window.setTimeout(function () {
         request(base + "/review").then(render).catch(showError);
       }, 2000);
@@ -727,7 +727,7 @@
       el.summary.textContent = "";
       el.bar.hidden = true;
       el.empty.appendChild(node("div", payload.error ? "notice error" : "notice",
-        payload.error || "L'analyse est en cours. Rechargez la page dans un instant."));
+        payload.error || "The analysis is still running. Reload in a moment."));
       return;
     }
 
@@ -735,40 +735,40 @@
       " · " + (payload.referentiel_label || result.referentiel) +
       " · " + result.scene_detected +
       (result.captured_at
-        ? " · prise de vue " + formatCaptured(result.captured_at)
-        : " · prise de vue non renseignée");
+        ? " · captured " + formatCaptured(result.captured_at)
+        : " · capture time not recorded");
     el.toolbar.hidden = false;
     el.pdfLink.href = base + "/report.pdf";
     loadOptions(result.referentiel);
     if (payload.detection && payload.detection.determined && payload.detection.justification) {
       var det = node("div", "detected");
-      det.appendChild(node("span", "detected-k", "Secteur détecté"));
+      det.appendChild(node("span", "detected-k", "Detected sector"));
       det.appendChild(node("span", "detected-v",
         (payload.referentiel_label || result.referentiel) +
-        " · confiance " + Math.round((payload.detection.confidence || 0) * 100) + " %"));
+        " · confidence " + Math.round((payload.detection.confidence || 0) * 100) + "%"));
       det.appendChild(node("div", "detected-j", payload.detection.justification));
       el.empty.appendChild(det);
     }
     renderSummary(payload.summary, result);
 
     if (!result.scene_valid) {
-      // Secteur indéterminé : ce n'est pas une panne mais un refus délibéré
-      // d'auditer avec les règles d'un secteur non établi.
+      // Undetermined sector: not a failure but a deliberate refusal to audit
+      // against the rules of an unestablished sector.
       if (payload.detection && !payload.detection.determined) {
-        // Rien n'a été audité : ni rapport à produire, ni constat à ajouter.
+        // Nothing was audited: no report to produce, no finding to add.
         el.toolbar.hidden = true;
         el.empty.appendChild(undeterminedPanel(payload));
       } else {
         el.empty.appendChild(node("div", "notice",
-          "La scène ne correspond pas au référentiel « " +
+          "The scene does not match the \"" +
           (payload.referentiel_label || result.referentiel) +
-          " » : aucun constat n'a été relevé. Refaites la prise de vue."));
+          "\" referential: no finding was raised. Re-shoot the inspection."));
       }
       el.bar.hidden = true;
       return;
     }
     if (result.findings.length === 0) {
-      el.empty.appendChild(node("div", "notice", "Aucune non-conformité observée."));
+      el.empty.appendChild(node("div", "notice", "No non-conformity observed."));
       el.bar.hidden = true;
       return;
     }
@@ -790,14 +790,14 @@
     el.dispatchBtn.disabled = pendingSend.length === 0;
     el.dispatchBtn.title = pendingSend.length > 0 ? ""
       : (sent > 0
-          ? "Tous les constats approuvés ont déjà été transmis."
-          : "Approuvez au moins un constat pour pouvoir le transmettre.");
+          ? "Every approved finding has already been sent."
+          : "Approve at least one finding to dispatch it.");
     el.dispatchNote.textContent =
       (pendingSend.length === 0
-        ? "Rien à envoyer"
-        : pendingSend.length + (pendingSend.length === 1 ? " constat à envoyer" : " constats à envoyer") +
-          (fromReview > 0 ? ", dont " + fromReview + " à confiance faible" : "")) +
-      (sent > 0 ? " · " + sent + " déjà transmis" : "") + ".";
+        ? "Nothing to send"
+        : pendingSend.length + (pendingSend.length === 1 ? " finding to send" : " findings to send") +
+          (fromReview > 0 ? ", " + fromReview + " of them low confidence" : "")) +
+      (sent > 0 ? " · " + sent + " already sent" : "") + ".";
   }
 
   el.addBtn.addEventListener("click", function () {
@@ -826,25 +826,25 @@
         return request(base + "/review").then(render).then(function () {
           el.dispatchResult.hidden = false;
           var lines = [
-            outcome.sent_count + " email(s) envoyé(s)" +
-            (outcome.failed_count ? ", " + outcome.failed_count + " en échec" : "") + "."
+            outcome.sent_count + " email(s) sent" +
+            (outcome.failed_count ? ", " + outcome.failed_count + " failed" : "") + "."
           ];
           if (outcome.already_sent.length) {
             lines.push(outcome.already_sent.length +
-              " constat(s) déjà transmis, non renvoyé(s).");
+              " finding(s) already sent, not re-sent.");
           }
           if (outcome.unassigned.length) {
             lines.push(outcome.unassigned.length +
-              " constat(s) approuvé(s) sans destinataire : rien n'a pu être envoyé.");
+              " approved finding(s) with no recipient: nothing could be sent.");
           }
           if (outcome.emails.length && outcome.emails[0].cc.length) {
-            lines.push("Copie à : " + outcome.emails[0].cc.join(", "));
+            lines.push("Cc: " + outcome.emails[0].cc.join(", "));
           }
           outcome.emails.forEach(function (mail) {
             lines.push(
-              (mail.status === "sent" ? "  OK   " : "  ECHEC") + " " + mail.email +
-              " [" + (mail.kind === "immediate" ? "arret immediat" : "recapitulatif") + "] " +
-              mail.finding_indexes.length + " constat(s)" +
+              (mail.status === "sent" ? "  OK   " : "  FAIL ") + " " + mail.email +
+              " [" + (mail.kind === "immediate" ? "immediate stop" : "digest") + "] " +
+              mail.finding_indexes.length + " finding(s)" +
               (mail.status === "sent" ? " — " + mail.message_id : " — " + mail.error));
           });
           el.dispatchResult.textContent = lines.join("\n");

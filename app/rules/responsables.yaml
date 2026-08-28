@@ -4,16 +4,16 @@
 roles:
   maintenance:
     email: amine@example.com
-    name: Responsable maintenance
+    name: Maintenance manager
   travaux:
     email: amine@example.com
-    name: Conducteur de travaux
+    name: Site manager
   hse:
     email: amine@example.com
-    name: Responsable HSE
+    name: HSE manager
   direction:
     email: amine@example.com
-    name: Directeur de site
+    name: Site director
 
 assignments:
   BUR-02: maintenance

@@ -1,20 +1,19 @@
-# Exemple de démonstration
+# Demo example
 
-`chantier-exemple.jpg` est la photo chargée par le bouton « Essayer avec un
-exemple » de la page d'accueil, pour qu'un visiteur puisse tester le service
-sans fournir sa propre image.
+`chantier-exemple.jpg` is the photo loaded by the landing page's "Try with an
+example" button, so a visitor can test the service without providing their own
+image.
 
-Le fichier doit être un **JPEG réel** : la page l'envoie en déclarant
-`image/jpeg`, et le moteur d'analyse reçoit ce type. Un fichier PNG renommé en
-`.jpg` déclarerait un type qui ne correspond pas à son contenu.
+The file must be a **real JPEG**: the page uploads it declaring `image/jpeg`,
+and the analysis engine receives that type. A PNG renamed to `.jpg` would
+declare a type that does not match its content.
 
-Pour le remplacer, gardez le même nom et le même emplacement — aucun
-changement de code n'est nécessaire :
+To replace it, keep the same name and location — no code change needed:
 
 ```bash
 python - <<'PY'
 from PIL import Image
-Image.open("votre-photo.png").convert("RGB").save(
+Image.open("your-photo.png").convert("RGB").save(
     "static/demo/chantier-exemple.jpg", format="JPEG", quality=90, optimize=True)
 PY
 ```

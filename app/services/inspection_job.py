@@ -15,10 +15,10 @@ from app.services import analysis_engine, assignment, evidence, inspection_store
 logger = logging.getLogger(__name__)
 
 UNDETERMINED_MESSAGE = (
-    "Le secteur n'a pas pu être déterminé avec certitude à partir du média. "
-    "Aucun audit n'a été lancé : auditer avec les règles d'un mauvais secteur "
-    "produirait des constats qui ne s'appliquent pas. Choisissez le référentiel "
-    "manuellement pour lancer l'analyse."
+    "The sector could not be determined with confidence from the media. "
+    "No audit was run: auditing against the wrong sector's rules would "
+    "produce findings that do not apply. Choose the referential manually "
+    "to start the analysis."
 )
 
 

@@ -308,7 +308,7 @@ def build_manual_finding(
         observation=observation,
         default_severity=rule.default_severity if rule is not None else observed_severity,
         observed_severity=observed_severity,
-        severity_reason="Constat ajouté par l'auditeur lors de la validation.",
+        severity_reason="Finding added by the auditor during validation.",
         iso_45001_clause=rule.iso_45001_clause if rule is not None else "",
         confidence=1.0,
         status=Status.NC,
