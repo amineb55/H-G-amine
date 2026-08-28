@@ -306,7 +306,7 @@ async def read_inspection(inspection_id: str) -> InspectionState:
 
 
 def _label_for(record: dict, result: EnrichedInspectionResult | None) -> str | None:
-    """Human name of the inspection's referential, for display."""
+    """Human name of the inspection's rule set, for display."""
     referentiel = result.referentiel if result else record.get("referentiel")
     return inspection_prompt.referentiel_label(referentiel) if referentiel else None
 
@@ -599,7 +599,7 @@ async def read_options(referentiel: Referentiel) -> dict:
 
 @app.get("/referentiels", include_in_schema=False)
 async def read_referentiels() -> list[dict]:
-    """The referentials on offer, with the label each catalog carries.
+    """The rule sets on offer, with the label each catalog carries.
 
     Read from the rule files so the landing page stays driven by
     configuration rather than by a list hardcoded in the page.
@@ -634,11 +634,11 @@ async def landing_page() -> FileResponse:
 async def choose_referentiel(
     inspection_id: str, choice: ReferentielChoice, background_tasks: BackgroundTasks
 ) -> InspectionAccepted:
-    """Audit an inspection against a referential the auditor picked.
+    """Audit an inspection against a rule set the auditor picked.
 
     Only available while the media is still held — which is the case when the
     sector could not be determined. Once an audit has run the media is gone,
-    and a different referential means a new upload.
+    and a different rule set means a new upload.
     """
     record = await inspection_store.get(inspection_id)
     if record is None:

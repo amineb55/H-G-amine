@@ -56,7 +56,7 @@ async def _record_undetermined(inspection_id: str, detection: SectorDetection) -
 async def run_inspection(inspection_id: str, referentiel: str | None = None) -> None:
     """Analyze the media held for an inspection and record the outcome.
 
-    Without a referential the sector is detected first. A sector that cannot
+    Without a rule set the sector is detected first. A sector that cannot
     be established with enough confidence stops the job before any audit: the
     media is retained pending the auditor's choice.
 

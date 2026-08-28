@@ -12,7 +12,7 @@ _EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class Severity(str, Enum):
-    """Severity levels used by the HSE referentials."""
+    """Severity levels used by the HSE rule sets."""
 
     ARRET_IMMEDIAT = "arret_immediat"
     CRITIQUE = "critique"
@@ -28,7 +28,7 @@ class Status(str, Enum):
 
 
 class Referentiel(str, Enum):
-    """Referentials that can be applied to an inspection."""
+    """Rule sets that can be applied to an inspection."""
 
     BUREAUX = "bureaux"
     BTP = "btp"
@@ -61,7 +61,7 @@ class InspectionStage(str, Enum):
     """How far the job has got.
 
     Only transitions the job can actually observe. Reading the media,
-    auditing it against the referential and grading the severity all happen
+    auditing it against the rule set and grading the severity all happen
     inside one call to the analysis engine, so they share the ANALYSE stage
     rather than being reported as three separate steps.
     """
@@ -77,7 +77,7 @@ class SectorDetection(BaseModel):
     """What the first pass recognised in the media."""
 
     referentiel: str | None = Field(
-        None, description="Referential detected, when one could be determined."
+        None, description="Rule set detected, when one could be determined."
     )
     confidence: float = Field(0.0, ge=0.0, le=1.0, description="How sure the pass is.")
     justification: str = Field("", description="What was recognised, in French.")
@@ -98,7 +98,7 @@ class Finding(BaseModel):
     """A single non-conformity observed during an inspection."""
 
     timestamp_sec: int = Field(..., ge=0, description="Offset in the media, in seconds.")
-    rule_id: str = Field(..., description="Identifier of the referential rule.")
+    rule_id: str = Field(..., description="Identifier of the rule set rule.")
     observation: str = Field(..., description="What was observed.")
     default_severity: Severity = Field(..., description="Severity defined by the rule.")
     observed_severity: Severity = Field(..., description="Severity retained for this observation.")
@@ -112,7 +112,7 @@ class InspectionResult(BaseModel):
     """Result of an inspection analysis."""
 
     inspection_id: str = Field(..., description="Identifier of the inspection.")
-    referentiel: str = Field(..., description="Referential applied to the analysis.")
+    referentiel: str = Field(..., description="Rule set applied to the analysis.")
     scene_valid: bool = Field(..., description="Whether the scene is exploitable.")
     scene_detected: str = Field(..., description="Type of scene detected in the media.")
     findings: list[Finding] = Field(default_factory=list, description="Findings raised by the analysis.")
@@ -190,7 +190,7 @@ class EnrichedInspectionResult(BaseModel):
     """An inspection result whose findings carry assignment and validation state."""
 
     inspection_id: str = Field(..., description="Identifier of the inspection.")
-    referentiel: str = Field(..., description="Referential applied to the analysis.")
+    referentiel: str = Field(..., description="Rule set applied to the analysis.")
     scene_valid: bool = Field(..., description="Whether the scene is exploitable.")
     scene_detected: str = Field(..., description="Type of scene detected in the media.")
     captured_at: datetime | None = Field(
@@ -223,7 +223,7 @@ class ReviewResponse(BaseModel):
     inspection_id: str = Field(..., description="Identifier of the inspection.")
     status: InspectionStatus = Field(..., description="Lifecycle status of the inspection.")
     referentiel_label: str | None = Field(
-        None, description="Human name of the referential, for display."
+        None, description="Human name of the rule set, for display."
     )
     detection: SectorDetection | None = Field(
         None, description="Outcome of the sector detection pass, when it ran."
@@ -332,6 +332,6 @@ class DispatchRequest(BaseModel):
 
 
 class ReferentielChoice(BaseModel):
-    """An auditor picking the referential to audit against."""
+    """An auditor picking the rule set to audit against."""
 
-    referentiel: Referentiel = Field(..., description="Referential to apply.")
+    referentiel: Referentiel = Field(..., description="Rule set to apply.")

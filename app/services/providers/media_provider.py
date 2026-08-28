@@ -58,11 +58,11 @@ class AnalysisProviderError(Exception):
 class _AnalysisPayload(BaseModel):
     """What the model is asked to return.
 
-    The inspection id and referential are known by the caller, so the model is
+    The inspection id and rule set are known by the caller, so the model is
     not asked to echo them back.
     """
 
-    scene_valid: bool = Field(..., description="Whether the scene matches the referential.")
+    scene_valid: bool = Field(..., description="Whether the scene matches the rule set.")
     scene_detected: str = Field(..., description="Short description of the scene.")
     findings: list[Finding] = Field(default_factory=list, description="Observed non-conformities.")
 
@@ -231,7 +231,7 @@ def _as_readable_error(exc: Exception) -> AnalysisProviderError:
 
 
 async def analyze(media_path: str, referentiel: str) -> dict:
-    """Analyze the media held in a directory against a referential.
+    """Analyze the media held in a directory against a rule set.
 
     Returns a dict matching ``InspectionResult``. Every failure surfaces as an
     ``AnalysisProviderError`` carrying a readable message.

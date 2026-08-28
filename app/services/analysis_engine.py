@@ -8,11 +8,11 @@ the provider SDK.
 
 
 async def analyze(media_path: str, referentiel: str) -> dict:
-    """Analyze inspection media against a referential.
+    """Analyze inspection media against a rule set.
 
     Args:
         media_path: Directory holding the media of one inspection.
-        referentiel: Identifier of the referential to apply.
+        referentiel: Identifier of the rule set to apply.
 
     Returns:
         A dict matching the ``InspectionResult`` schema.

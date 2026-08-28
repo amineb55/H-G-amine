@@ -118,7 +118,7 @@ def _find_rule(referentiel: str, rule_id: str) -> Rule | None:
     try:
         catalog = load_catalog(referentiel)
     except PromptError:
-        logger.warning("No rule catalog for referential '%s'", referentiel)
+        logger.warning("No rule catalog for rule set '%s'", referentiel)
         return None
     for rule in catalog.rules:
         if rule.id == rule_id:

@@ -67,7 +67,7 @@ kept. Nothing else survives the audit.
 
 ### Scope of this submission
 
-Two referentials are implemented and field-tested: **offices** and
+Two rule sets are implemented and field-tested: **offices** and
 **construction sites**, 12 rules each, written by a QSE professional with eight
 years of practice and ISO 9001 / 14001 / 45001 certification.
 
@@ -117,7 +117,7 @@ asserted. The auditor can correct any finding, and every correction is
 auditable. No individual is ever identified, and the source footage is destroyed
 once evidence frames are extracted.
 
-Two referentials are implemented and tested: offices and construction sites.
+Two rule sets are implemented and tested: offices and construction sites.
 
 ---
 

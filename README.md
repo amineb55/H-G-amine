@@ -41,7 +41,7 @@ without that approval.
 
 ## Scope of this demo
 
-Two referentials are implemented and field-tested:
+Two rule sets are implemented and field-tested:
 
 - **`bureaux`** — offices and administrative premises (12 rules)
 - **`btp`** — construction sites (12 rules)
