@@ -175,7 +175,8 @@
   .cc-field label { display: block; font-size: 11px; text-transform: uppercase;
     letter-spacing: 0.04em; color: var(--ink-faint); margin-bottom: 3px; }
   .cc-error { color: var(--arret); font-size: 12px; margin-top: 4px; }
-  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 4px; }
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 18px 0 4px; }
+  .hint { font-size: 13px; color: var(--ink-soft); }
   a.button {
     font-size: 13px; padding: 7px 14px; border: 1px solid var(--border);
     border-radius: 6px; background: var(--surface); color: var(--ink);
@@ -231,6 +232,7 @@
     <a class="button" id="pdf-link" href="#" target="_blank" rel="noopener">
       Download the PDF report</a>
     <button id="add-btn">Add a finding</button>
+    <span class="hint" id="report-hint" hidden></span>
   </div>
   <div id="add-form"></div>
   <div id="findings"></div>
@@ -279,6 +281,7 @@
     dispatchResult: document.getElementById("dispatch-result"),
     toolbar: document.getElementById("toolbar"),
     pdfLink: document.getElementById("pdf-link"),
+    reportHint: document.getElementById("report-hint"),
     addBtn: document.getElementById("add-btn"),
     addForm: document.getElementById("add-form"),
     ccInput: document.getElementById("cc-input"),
@@ -580,6 +583,31 @@
     return button;
   }
 
+  function validationHint(result) {
+    // One sentence shared by the report and dispatch areas: what is still
+    // awaiting a decision, and what that means for the output.
+    var pending = result.findings.filter(function (f) {
+      return f.validation_status === "pending";
+    }).length;
+    var approved = result.findings.filter(function (f) {
+      return f.validation_status === "approved";
+    }).length;
+    if (pending === 0) { return null; }
+    var head = pending + (pending === 1 ? " finding" : " findings") +
+      " awaiting your validation.";
+    if (approved === 0) {
+      return head + " Only approved findings appear in the report — " +
+        "downloaded now, it will state that nothing was retained.";
+    }
+    return head + " Only approved findings appear in the report.";
+  }
+
+  function updateReportHint(result) {
+    var hint = validationHint(result);
+    el.reportHint.textContent = hint || "";
+    el.reportHint.hidden = !hint;
+  }
+
   function pendingSendCount() {
     var result = state && state.result;
     if (!result) { return 0; }
@@ -739,6 +767,7 @@
         : " · capture time not recorded");
     el.toolbar.hidden = false;
     el.pdfLink.href = base + "/report.pdf";
+    updateReportHint(result);
     loadOptions(result.referentiel);
     if (payload.detection && payload.detection.determined && payload.detection.justification) {
       var det = node("div", "detected");
@@ -792,12 +821,18 @@
       : (sent > 0
           ? "Every approved finding has already been sent."
           : "Approve at least one finding to dispatch it.");
+    var awaiting = result.findings.filter(function (f) {
+      return f.validation_status === "pending";
+    }).length;
     el.dispatchNote.textContent =
       (pendingSend.length === 0
         ? "Nothing to send"
         : pendingSend.length + (pendingSend.length === 1 ? " finding to send" : " findings to send") +
           (fromReview > 0 ? ", " + fromReview + " of them low confidence" : "")) +
-      (sent > 0 ? " · " + sent + " already sent" : "") + ".";
+      (sent > 0 ? " · " + sent + " already sent" : "") +
+      (awaiting > 0
+        ? " · " + awaiting + " awaiting validation, excluded until approved"
+        : "") + ".";
   }
 
   el.addBtn.addEventListener("click", function () {
