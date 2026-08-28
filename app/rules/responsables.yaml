@@ -7,7 +7,7 @@ roles:
     name: Maintenance manager
   travaux:
     email: amine@example.com
-    name: Site manager
+    name: Works supervisor
   hse:
     email: amine@example.com
     name: HSE manager

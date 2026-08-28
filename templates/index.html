@@ -300,8 +300,8 @@
       <div class="step">
         <div class="num" aria-hidden="true">01</div>
         <div class="t">Detects and prioritises</div>
-        <div class="d">Every deviation is tied to a rule of the referential and graded
-          by what the scene actually shows, not by a fixed scale.</div>
+        <div class="d">Every deviation is tied to a rule of the matching rule set and
+          graded by what the scene actually shows, not by a fixed scale.</div>
       </div>
       <div class="step">
         <div class="num" aria-hidden="true">02</div>
@@ -322,7 +322,7 @@
     <div class="judges">
       <div class="judges-title">Scope of this demonstration</div>
       <p>This demonstration covers two sectors: offices and administrative
-        premises, and construction sites. Referentials are configuration files:
+        premises, and construction sites. Rule sets are configuration files:
         adding a sector requires no code change. The other sectors (industry,
         healthcare, logistics, transport, food service) are drafted but not
         field-validated, and deliberately out of scope.</p>
@@ -345,11 +345,11 @@
   var POLL_MS = 2000;
 
   // The stages the server can actually observe. Reading the media, auditing
-  // against the referential and assessing severity happen inside one engine
+  // against the rule set and assessing severity happen inside one engine
   // call: they share the "analyse" stage.
   var STAGES = [
     { key: "reception",   name: "Reading the media" },
-    { key: "analyse",     name: "Auditing against the referential" },
+    { key: "analyse",     name: "Auditing against the rule set" },
     { key: "analyse",     name: "Assessing severity" },
     { key: "assignation", name: "Assigning owners" }
   ];

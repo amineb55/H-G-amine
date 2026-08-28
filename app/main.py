@@ -246,7 +246,7 @@ def _validate_upload(files: list[UploadFile]) -> None:
 async def create_inspection(
     background_tasks: BackgroundTasks,
     referentiel: Referentiel | None = Form(
-        None, description="Referential to apply. Omitted, the sector is detected."
+        None, description="Rule set to apply. Omitted, the sector is detected."
     ),
     files: list[UploadFile] = File(..., description="One video, or up to ten images."),
 ) -> InspectionAccepted:

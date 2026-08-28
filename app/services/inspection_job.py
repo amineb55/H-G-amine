@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 UNDETERMINED_MESSAGE = (
     "The sector could not be determined with confidence from the media. "
     "No audit was run: auditing against the wrong sector's rules would "
-    "produce findings that do not apply. Choose the referential manually "
+    "produce findings that do not apply. Choose the rule set manually "
     "to start the analysis."
 )
 

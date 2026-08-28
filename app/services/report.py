@@ -121,7 +121,7 @@ def _header(
     story = [
         Paragraph("HSE inspection report", style["title"]),
         Paragraph(
-            f"Referential: <b>{escape(inspection_prompt.referentiel_label(result.referentiel))}"
+            f"Rule set: <b>{escape(inspection_prompt.referentiel_label(result.referentiel))}"
             f"</b> &nbsp;·&nbsp; Inspection {escape(result.inspection_id)}",
             style["sub"],
         ),

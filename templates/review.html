@@ -673,7 +673,7 @@
   }
 
   function loadOptions(referentiel) {
-    // An inspection with an undetermined sector has no referential: there is
+    // An inspection with an undetermined sector has no rule set: there is
     // no rule catalogue to load.
     if (!referentiel || options.rules.length) { return; }
     fetch("/referentiels/" + encodeURIComponent(referentiel) + "/options")
@@ -714,7 +714,7 @@
       el.findings.textContent = "";
       el.bar.hidden = true;
       el.empty.appendChild(node("div", "notice",
-        "Analysis in progress with the chosen referential. This screen " +
+        "Analysis in progress with the chosen rule set. This screen " +
         "updates automatically."));
       window.setTimeout(function () {
         request(base + "/review").then(render).catch(showError);
@@ -762,7 +762,7 @@
         el.empty.appendChild(node("div", "notice",
           "The scene does not match the \"" +
           (payload.referentiel_label || result.referentiel) +
-          "\" referential: no finding was raised. Re-shoot the inspection."));
+          "\" rule set: no finding was raised. Re-shoot the inspection."));
       }
       el.bar.hidden = true;
       return;
