@@ -3,16 +3,16 @@
 
 roles:
   maintenance:
-    email: amine@example.com
+    email: boukhaa33@gmail.com
     name: Maintenance manager
   travaux:
-    email: amine@example.com
+    email: boukhaa33@gmail.com
     name: Works supervisor
   hse:
-    email: amine@example.com
+    email: boukhaa33@gmail.com
     name: HSE manager
   direction:
-    email: amine@example.com
+    email: boukhaa33@gmail.com
     name: Site director
 
 assignments:
