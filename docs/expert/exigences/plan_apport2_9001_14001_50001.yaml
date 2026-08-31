@@ -1,0 +1,95 @@
+# =====================================================================
+# APPORT 2 — PLAN DE RÉDACTION DES EXIGENCES SPÉCIFIQUES 9001 / 14001 / 50001
+# Statut : CARTE DES SUJETS — les enregistrements sont rédigés (brouillon v0.1)
+#          dans exigences_9001.yaml, exigences_14001.yaml, exigences_50001.yaml.
+#          Ce fichier sert de sommaire de relecture ; les 14001-ENR-xx et
+#          50001-ENR-xx ont été fondus dans les clauses correspondantes.
+# Rappel : les exigences communes (HLS) sont déjà couvertes par les
+#          enregistrements 45001 marqués hls_commun: oui ; seules les nuances
+#          réelles sont à ajouter ici (champ `nuance_de`).
+# =====================================================================
+version: "0.1-squelette"
+
+iso_9001:
+  volume_cible: 25-30
+  a_rediger:
+    - {id: 9001-4.4.1, sujet: "Processus : critères, méthodes, indicateurs, ressources, risques par processus", nuance_de: 45001-4.4}
+    - {id: 9001-5.1.2, sujet: "Orientation client : exigences clients et légales comprises, risques produit maîtrisés, satisfaction visée"}
+    - {id: 9001-5.2, sujet: "Politique qualité : nuance des engagements (satisfaire les exigences, améliorer)", nuance_de: 45001-5.2}
+    - {id: 9001-6.3, sujet: "Planification des modifications du système : raison, conséquences, ressources, responsabilités"}
+    - {id: 9001-7.1.3, sujet: "Infrastructure : bâtiments, équipements, transport, informatique adaptés et entretenus"}
+    - {id: 9001-7.1.4, sujet: "Environnement de travail pour la conformité des produits : facteurs physiques, sociaux, psychologiques"}
+    - {id: 9001-7.1.5, sujet: "Ressources de surveillance et de mesure : adéquation, traçabilité métrologique", nuance_de: 45001-9.1.1b}
+    - {id: 9001-7.1.6, sujet: "Connaissances organisationnelles : identifiées, conservées, mises à jour"}
+    - {id: 9001-8.1, sujet: "Planification et maîtrise opérationnelles : critères produit, moyens, enregistrements", nuance_de: 45001-8.1.1a}
+    - {id: 9001-8.2.1, sujet: "Communication avec les clients : information produit, contrats, retours, réclamations, propriété du client"}
+    - {id: 9001-8.2.2, sujet: "Exigences relatives aux produits et services : définies, y compris légales et implicites"}
+    - {id: 9001-8.2.3, sujet: "Revue des exigences avant engagement : capacité à répondre, écarts résolus, enregistrement"}
+    - {id: 9001-8.2.4, sujet: "Modifications des exigences : documents mis à jour, personnes informées"}
+    - {id: 9001-8.3a, sujet: "Conception et développement : planification (étapes, revues, vérification, validation, responsabilités)"}
+    - {id: 9001-8.3b, sujet: "Conception : éléments d'entrée complets et éléments de sortie vérifiés (critères d'acceptation)"}
+    - {id: 9001-8.3c, sujet: "Conception : maîtrise des revues, vérifications, validations et modifications"}
+    - {id: 9001-8.4.1, sujet: "Prestataires externes : critères de sélection, évaluation, surveillance, réévaluation", nuance_de: 45001-8.1.4.2a}
+    - {id: 9001-8.4.2, sujet: "Type et étendue de la maîtrise des prestataires selon l'impact sur le produit"}
+    - {id: 9001-8.4.3, sujet: "Informations transmises aux prestataires : exigences produit, compétences, contrôles, interactions"}
+    - {id: 9001-8.5.1, sujet: "Maîtrise de la production / prestation : conditions maîtrisées, validation des procédés spéciaux"}
+    - {id: 9001-8.5.2, sujet: "Identification et traçabilité des produits et de leur statut de contrôle"}
+    - {id: 9001-8.5.3, sujet: "Propriété des clients et des prestataires externes : identification, protection, information en cas de perte"}
+    - {id: 9001-8.5.4, sujet: "Préservation des produits : manutention, stockage, emballage, transport"}
+    - {id: 9001-8.5.5, sujet: "Activités après livraison : garantie, maintenance, retours, obligations légales"}
+    - {id: 9001-8.5.6, sujet: "Maîtrise des modifications en production : revue, autorisation, enregistrement"}
+    - {id: 9001-8.6, sujet: "Libération des produits et services : contrôles réalisés, preuves de conformité, autorité de libération"}
+    - {id: 9001-8.7, sujet: "Éléments de sortie non conformes : identification, isolement, correction, dérogation, information client, enregistrement"}
+    - {id: 9001-9.1.2, sujet: "Satisfaction du client : méthode de recueil, analyse, exploitation"}
+    - {id: 9001-9.1.3, sujet: "Analyse et évaluation : conformité produit, satisfaction, performance des processus et des prestataires", nuance_de: 45001-9.1.1c}
+
+iso_14001:
+  volume_cible: 20-25
+  a_rediger:
+    - {id: 14001-4.1, sujet: "Enjeux incluant les conditions environnementales (climat, eau, biodiversité) affectant ou affectées par l'organisme", nuance_de: 45001-4.1}
+    - {id: 14001-4.3, sujet: "Domaine d'application incluant les activités, produits et services avec perspective de cycle de vie", nuance_de: 45001-4.3}
+    - {id: 14001-5.2, sujet: "Politique environnementale : protection de l'environnement, prévention de la pollution, obligations de conformité", nuance_de: 45001-5.2}
+    - {id: 14001-6.1.2a, sujet: "Aspects environnementaux : identification par activité (rejets, consommations, déchets, nuisances, sol), conditions normales / anormales / urgence, cycle de vie"}
+    - {id: 14001-6.1.2b, sujet: "Aspects significatifs : critères de cotation, liste, communication interne"}
+    - {id: 14001-6.1.3, sujet: "Obligations de conformité : identification, accès, application (autorisations, seuils de rejet, déchets)", nuance_de: 45001-6.1.3a}
+    - {id: 14001-6.1.4, sujet: "Planification d'actions sur aspects significatifs, obligations, risques et opportunités", nuance_de: 45001-6.1.4}
+    - {id: 14001-6.2, sujet: "Objectifs environnementaux et planification (indicateurs, responsables, moyens, échéances)", nuance_de: 45001-6.2.1}
+    - {id: 14001-7.4.3, sujet: "Communication externe : obligations légales, demandes des parties intéressées, informations publiées fiables", nuance_de: 45001-7.4.3}
+    - {id: 14001-8.1a, sujet: "Maîtrise opérationnelle des aspects significatifs : critères, procédures, contrôle des prestataires"}
+    - {id: 14001-8.1b, sujet: "Perspective de cycle de vie : conception, achats, exigences aux prestataires, information sur l'utilisation et la fin de vie"}
+    - {id: 14001-8.2, sujet: "Urgences environnementales : scénarios (déversement, incendie, fuite), moyens, exercices, révision", nuance_de: 45001-8.2a}
+    - {id: 14001-9.1.1, sujet: "Surveillance : rejets, consommations, déchets, bruit ; équipements étalonnés ; analyse des résultats", nuance_de: 45001-9.1.1a}
+    - {id: 14001-9.1.2, sujet: "Évaluation de la conformité aux obligations environnementales, statut connu", nuance_de: 45001-9.1.2}
+    - {id: 14001-9.3, sujet: "Revue de direction : entrées environnementales (aspects, obligations, résultats, communication)", nuance_de: 45001-9.3a}
+    - {id: 14001-10.2, sujet: "Non-conformités : atténuation des impacts, causes, actions", nuance_de: 45001-10.2b}
+    - {id: 14001-ENR-01, sujet: "Registre des aspects et impacts (colonnes de la grille, cotation)"}
+    - {id: 14001-ENR-02, sujet: "Gestion des déchets : tri, stockage, prestataires agréés, bordereaux de suivi"}
+    - {id: 14001-ENR-03, sujet: "Autorisations et déclarations environnementales détenues (rejets, ICPE ou équivalent marocain, eau)"}
+    - {id: 14001-ENR-04, sujet: "Bilan des consommations (eau, énergie, matières) et des rejets"}
+
+iso_50001:
+  volume_cible: 20-25
+  validation_requise: "Auditeur énergie partenaire ou qualification 50001 d'Amine avant mise en production (voir document Apports §3)"
+  a_rediger:
+    - {id: 50001-4.3, sujet: "Domaine d'application et périmètre physique : limites énergétiques, sources et usages inclus", nuance_de: 45001-4.3}
+    - {id: 50001-5.1, sujet: "Leadership : équipe de management de l'énergie constituée, performance énergétique dans la stratégie", nuance_de: 45001-5.1a}
+    - {id: 50001-5.2, sujet: "Politique énergétique : amélioration continue de la performance énergétique, données disponibles, achats efficaces, conception", nuance_de: 45001-5.2}
+    - {id: 50001-5.3, sujet: "Rôles : équipe énergie, responsabilités de collecte et d'analyse des données", nuance_de: 45001-5.3}
+    - {id: 50001-6.2, sujet: "Objectifs et cibles énergétiques, plans d'action, méthode de vérification des résultats", nuance_de: 45001-6.2.1}
+    - {id: 50001-6.3a, sujet: "Revue énergétique : analyse des usages et consommations par source, données mesurées"}
+    - {id: 50001-6.3b, sujet: "Usages énergétiques significatifs : critères, liste, variables pertinentes, personnes concernées"}
+    - {id: 50001-6.3c, sujet: "Opportunités d'amélioration identifiées et priorisées ; estimation des consommations futures"}
+    - {id: 50001-6.4, sujet: "Indicateurs de performance énergétique : définition, méthode de calcul, normalisation par les variables"}
+    - {id: 50001-6.5, sujet: "Situation énergétique de référence : période, données, ajustements, révision"}
+    - {id: 50001-6.6, sujet: "Plan de collecte des données énergétiques : quoi, comment, fréquence, précision des instruments"}
+    - {id: 50001-7.2, sujet: "Compétences des personnes influant sur les usages significatifs", nuance_de: 45001-7.2a}
+    - {id: 50001-7.3, sujet: "Sensibilisation : contribution de chacun à la performance énergétique", nuance_de: 45001-7.3}
+    - {id: 50001-8.1, sujet: "Maîtrise opérationnelle des usages significatifs : critères de fonctionnement, maintenance, consignes"}
+    - {id: 50001-8.2, sujet: "Conception : prise en compte de la performance énergétique dans les projets neufs ou rénovés"}
+    - {id: 50001-8.3, sujet: "Achats : critères énergétiques pour les équipements et l'énergie elle-même, information des fournisseurs"}
+    - {id: 50001-9.1.1, sujet: "Surveillance et mesure de la performance énergétique : usages significatifs, indicateurs, plans d'action, écarts", nuance_de: 45001-9.1.1a}
+    - {id: 50001-9.1.2, sujet: "Évaluation de la conformité aux obligations énergétiques (audit énergétique obligatoire, étiquetage)", nuance_de: 45001-9.1.2}
+    - {id: 50001-9.3, sujet: "Revue de direction : entrées énergétiques (performance, indicateurs, situation de référence, plans d'action)", nuance_de: 45001-9.3a}
+    - {id: 50001-10.2, sujet: "Non-conformités et amélioration de la performance énergétique", nuance_de: 45001-10.2b}
+    - {id: 50001-ENR-01, sujet: "Modèle de revue énergétique (tableau des usages, consommations, part, variables, opportunités)"}
+    - {id: 50001-ENR-02, sujet: "Tableau de bord des IPÉ et suivi de la SER"}

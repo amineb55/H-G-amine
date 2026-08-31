@@ -1,0 +1,262 @@
+# =====================================================================
+# RÉFÉRENTIEL TERRAIN — INDUSTRIE (ateliers, usines, maintenance)
+# Statut : BROUILLON v0.1 — à relire par Amine Boukha.
+# Clés : à aligner sur le format existant de app/rules/bureaux.yaml et
+#        app/rules/btp.yaml (le relecteur renomme les clés si besoin ; le
+#        contenu des champs indices_visuels et exclusions est le plus précieux).
+# criticite_defaut : 4 = critique (danger grave et imminent), 3 = majeure,
+#        2 = mineure, 1 = observation. Point de départ : le moteur escalade
+#        selon les critères du fichier baremes/baremes.yaml.
+# =====================================================================
+secteur: industrie
+version: "0.1-brouillon"
+regles:
+
+  - id: IND-01
+    titre: Protecteur de machine absent, ouvert ou neutralisé
+    categorie: machines
+    description: >
+      Une machine en fonctionnement expose une zone dangereuse (organes en
+      mouvement, lame, courroie, engrenage, point de pincement) parce que le
+      protecteur a été retiré, ouvert ou que son interverrouillage est contourné.
+    criticite_defaut: 4
+    exigences: [45001-8.1.1a, 45001-8.1.2a, 45001-6.1.2.1]
+    reference_reglementaire: "Code du travail (loi 65-99), Titre IV hygiène et sécurité ; arrêté d'application 93-08 — à vérifier"
+    indices_visuels:
+      - "Carter ou capot retiré laissant voir une courroie, un engrenage, une lame ou un arbre en rotation"
+      - "Grille ou porte de protection relevée, attachée ou calée en position ouverte"
+      - "Capteur d'interverrouillage contourné (fil, ruban adhésif, aimant, boulon)"
+      - "Opérateur avec les mains à proximité d'une zone d'entraînement, machine en marche"
+    exclusions:
+      - "Machine à l'arrêt et consignée : cadenas et étiquette visibles sur le sectionneur"
+      - "Machine hors tension avec panneau « hors service » ou « en maintenance »"
+      - "Zone entièrement grillagée et fermée : le protecteur ouvert est inaccessible à l'opérateur"
+    action_immediate: "Arrêt de la machine, remise en place du protecteur, contrôle de l'interverrouillage avant redémarrage"
+
+  - id: IND-02
+    titre: Intervention sans consignation des énergies
+    categorie: energies
+    description: >
+      Une personne intervient dans une armoire électrique, une machine ou une
+      tuyauterie sans que les énergies (électrique, hydraulique, pneumatique,
+      mécanique, thermique) aient été coupées, verrouillées et signalées.
+    criticite_defaut: 4
+    exigences: [45001-8.1.1a, 45001-7.2b]
+    reference_reglementaire: "Code du travail (loi 65-99), Titre IV ; textes relatifs aux installations électriques — à vérifier"
+    indices_visuels:
+      - "Personne les mains dans une armoire électrique ouverte sans cadenas ni étiquette de consignation visible"
+      - "Outil engagé dans une machine dont le voyant « sous tension » ou « en marche » est allumé"
+      - "Vanne manœuvrée à la main sur une tuyauterie manifestement sous pression (fuite, sifflement, manomètre)"
+      - "Intervention sur un convoyeur ou une presse sans dispositif de blocage visible"
+    exclusions:
+      - "Cadenas et étiquette nominative visibles sur le sectionneur ou la vanne"
+      - "Essais sous tension signalés : balisage, personnel identifiable comme habilité"
+      - "Petit matériel débranché de la prise (le débranchement vaut consignation)"
+    action_immediate: "Arrêt de l'intervention, mise en sécurité, consignation formelle avant reprise"
+
+  - id: IND-03
+    titre: Stockage de produits chimiques non conforme
+    categorie: chimique
+    description: >
+      Des produits dangereux sont stockés sans identification, sans rétention,
+      avec des produits incompatibles ou près d'une source de chaleur.
+    criticite_defaut: 3
+    exigences: [45001-7.5.3b, 45001-8.1.1a, 45001-6.1.2.1]
+    reference_reglementaire: "Décret 2-12-431 (substances et préparations dangereuses) — à vérifier"
+    indices_visuels:
+      - "Bidon ou fût sans étiquette, ou étiquette illisible / arrachée"
+      - "Produit transvasé dans une bouteille d'eau, de boisson ou un contenant alimentaire"
+      - "Liquides stockés au sol sans bac de rétention, fuites ou coulures"
+      - "Acides et bases, ou oxydants et inflammables, côte à côte sur la même étagère"
+      - "Fûts ouverts, ou stockage à proximité d'un poste de soudage, d'un radiateur, d'un moteur"
+    exclusions:
+      - "Petit conditionnement étiqueté en cours d'utilisation au poste"
+      - "Armoire de sécurité fermée avec pictogrammes de danger"
+      - "Rayonnage à rétention intégrée (le bac n'est pas visible mais existe)"
+    action_immediate: "Identifier, isoler, mettre sur rétention ; séparer les incompatibles ; vérifier la FDS"
+
+  - id: IND-04
+    titre: Circulation engins / piétons non séparée
+    categorie: circulation
+    description: >
+      Piétons et engins motorisés partagent le même espace sans marquage, sans
+      passages protégés ou avec des allées encombrées.
+    criticite_defaut: 3
+    exigences: [45001-6.1.2.1, 45001-8.1.2a]
+    reference_reglementaire: "Code du travail (loi 65-99), Titre IV — à vérifier"
+    indices_visuels:
+      - "Allées non marquées au sol ou marquage effacé"
+      - "Piéton dans une zone de circulation d'engins sans gilet ni passage matérialisé"
+      - "Allée encombrée par des palettes, chariots, câbles ou déchets"
+      - "Intersection sans miroir ni signalisation dans une zone où circulent des chariots"
+    exclusions:
+      - "Zone temporairement balisée pour travaux (cônes, rubalise, panneau)"
+      - "Séparation assurée par des barrières physiques plutôt que par la peinture au sol"
+      - "Atelier sans engins motorisés (transpalettes manuels uniquement)"
+    action_immediate: "Dégager l'allée, rétablir ou créer le marquage, rappeler les règles de priorité"
+
+  - id: IND-05
+    titre: Conduite de chariot élévateur dangereuse
+    categorie: engins
+    description: >
+      Un chariot est utilisé d'une manière qui expose le conducteur ou les
+      personnes à proximité : charge instable, fourches levées, passager,
+      absence de ceinture, élévation de personne.
+    criticite_defaut: 4
+    exigences: [45001-7.2b, 45001-8.1.1a]
+    reference_reglementaire: "Code du travail (loi 65-99), Titre IV ; textes sur les appareils de levage — à vérifier"
+    indices_visuels:
+      - "Conducteur sans ceinture sur un chariot à conducteur porté"
+      - "Chariot circulant fourches levées ou charge en hauteur"
+      - "Charge non centrée, instable, ou masquant la visibilité en marche avant"
+      - "Passager sur le chariot ou personne debout sur les fourches / une palette"
+      - "Chariot stationné fourches levées ou moteur en marche sans conducteur"
+    exclusions:
+      - "Transpalette ou gerbeur à conducteur accompagnant (pas de ceinture prévue)"
+      - "Plateforme homologuée pour l'élévation de personnes, avec harnais accroché"
+      - "Chariot à l'arrêt, fourches au sol, en zone de stationnement"
+    action_immediate: "Arrêt de la manœuvre, remise au sol de la charge, rappel au conducteur, vérification de son autorisation"
+
+  - id: IND-06
+    titre: EPI absent ou inadapté à la tâche
+    categorie: epi
+    description: >
+      Une personne réalise une tâche exposante sans l'équipement de protection
+      individuelle prévu pour cette tâche, ou avec un équipement inadapté.
+    criticite_defaut: 3
+    exigences: [45001-8.1.2b, 45001-8.1.2a]
+    reference_reglementaire: "Code du travail (loi 65-99), Titre IV — à vérifier"
+    indices_visuels:
+      - "Meulage, tronçonnage, perçage ou soudage sans lunettes, écran facial ou masque"
+      - "Absence de protection auditive dans une zone signalée bruyante (pictogramme)"
+      - "Manipulation de produits chimiques sans gants ni lunettes"
+      - "Chaussures de ville ou sandales dans un atelier ou une zone de manutention"
+      - "Absence de casque dans une zone de levage ou signalée « port du casque obligatoire »"
+    exclusions:
+      - "Personne dans une zone administrative, de repos ou de circulation hors atelier"
+      - "Opération à l'arrêt (préparation, nettoyage sans exposition)"
+      - "EPI porté mais dont le type n'est pas identifiable sur l'image : ne pas conclure, demander une vérification"
+    action_immediate: "Interruption de la tâche jusqu'à mise à disposition et port de l'EPI adapté"
+
+  - id: IND-07
+    titre: Installations électriques dangereuses
+    categorie: electricite
+    description: >
+      L'installation ou le matériel électrique présente un risque de contact
+      direct, de surcharge ou de départ de feu.
+    criticite_defaut: 4
+    exigences: [45001-6.1.3b, 45001-8.1.1a]
+    reference_reglementaire: "Textes relatifs aux installations électriques et à leur vérification périodique — à vérifier"
+    indices_visuels:
+      - "Armoire ou coffret électrique ouvert sans intervenant"
+      - "Câbles dénudés, épissures au ruban adhésif, conducteurs apparents"
+      - "Multiprises en cascade, rallonges au sol dans les passages ou en zone humide"
+      - "Prises, interrupteurs ou boîtiers cassés"
+      - "Matériel ou stockage devant un tableau électrique"
+    exclusions:
+      - "Armoire ouverte avec intervenant identifiable comme habilité et zone balisée"
+      - "Rallonge temporaire protégée par un passe-câble et hors zone humide"
+    action_immediate: "Mise hors tension si danger de contact, fermeture de l'armoire, remplacement du matériel endommagé"
+
+  - id: IND-08
+    titre: Moyens de lutte contre l'incendie inaccessibles ou non maintenus
+    categorie: incendie
+    description: >
+      Les extincteurs, RIA ou autres moyens ne sont pas utilisables au moment
+      voulu : masqués, absents, périmés, inadaptés au risque.
+    criticite_defaut: 3
+    exigences: [45001-8.2a, 45001-8.2b]
+    reference_reglementaire: "Règlement général de construction — sécurité incendie (décret 2-14-499) — à vérifier"
+    indices_visuels:
+      - "Extincteur masqué par du stockage, obstrué ou couché au sol"
+      - "Étiquette de vérification absente ou date de vérification dépassée"
+      - "RIA bloqué, dévidoir vide ou porte d'armoire condamnée"
+      - "Signalisation de l'extincteur absente ou masquée"
+      - "Type d'extincteur inadapté au risque local (eau près d'huiles ou d'installations électriques)"
+    exclusions:
+      - "Extincteur en cours de remplacement avec panneau ou étiquette provisoire"
+      - "Étiquette de vérification illisible sur l'image : signaler « à vérifier », pas une NC"
+    action_immediate: "Dégager, remplacer ou compléter le moyen d'extinction ; planifier la vérification"
+
+  - id: IND-09
+    titre: Issue de secours ou cheminement d'évacuation obstrué
+    categorie: evacuation
+    description: >
+      Une issue de secours ou un cheminement d'évacuation ne permet pas de sortir
+      rapidement et sans obstacle en cas d'urgence.
+    criticite_defaut: 4
+    exigences: [45001-8.2a, 45001-8.2b]
+    reference_reglementaire: "Règlement général de construction — sécurité incendie (décret 2-14-499) — à vérifier"
+    indices_visuels:
+      - "Porte de secours verrouillée, cadenassée, bloquée par une chaîne ou un obstacle"
+      - "Palettes, machines, déchets ou véhicules devant une issue"
+      - "Couloir ou escalier d'évacuation encombré"
+      - "Bloc de signalisation d'issue absent, masqué ou éteint"
+      - "Porte coupe-feu maintenue ouverte par une cale"
+    exclusions:
+      - "Obstruction très temporaire en cours de manutention, opérateur présent"
+      - "Issue condamnée officiellement et signalée, avec une autre issue à proximité"
+      - "Porte coupe-feu maintenue ouverte par une ventouse asservie à l'alarme"
+    action_immediate: "Dégager l'issue immédiatement, déverrouiller, rétablir la signalisation"
+
+  - id: IND-10
+    titre: Travail en hauteur sans protection
+    categorie: hauteur
+    description: >
+      Une personne travaille en hauteur (plateforme, toiture, mezzanine,
+      échafaudage, échelle, nacelle) sans protection collective ni individuelle
+      contre la chute.
+    criticite_defaut: 4
+    exigences: [45001-8.1.1a, 45001-8.1.2a, 45001-7.2b]
+    reference_reglementaire: "Code du travail (loi 65-99), Titre IV ; arrêté 93-08 — à vérifier"
+    indices_visuels:
+      - "Personne sur une plateforme, un toit, une mezzanine ou un échafaudage sans garde-corps"
+      - "Échelle utilisée comme poste de travail prolongé, non arrimée ou posée sur un support instable"
+      - "Absence de harnais, ou harnais porté mais non accroché à un point d'ancrage"
+      - "Nacelle utilisée sans harnais accroché"
+      - "Trémie, trappe ou ouverture au sol non protégée ni balisée"
+    exclusions:
+      - "Garde-corps présent mais hors champ : ne pas conclure sans vue complète"
+      - "Travaux à faible hauteur avec protection adaptée (plateforme individuelle roulante avec garde-corps)"
+      - "Échafaudage en cours de montage par du personnel visiblement équipé et accroché"
+    action_immediate: "Arrêt des travaux, descente de la personne, mise en place de la protection avant reprise"
+
+  - id: IND-11
+    titre: Bouteilles de gaz mal stockées ou non arrimées
+    categorie: gaz
+    description: >
+      Des bouteilles de gaz comprimé ou liquéfié sont stockées ou utilisées de
+      façon à pouvoir tomber, fuir ou s'échauffer.
+    criticite_defaut: 3
+    exigences: [45001-8.1.1a, 45001-6.1.2.1]
+    reference_reglementaire: "Textes relatifs aux appareils à pression et au stockage des gaz — à vérifier"
+    indices_visuels:
+      - "Bouteille debout sans chaîne ni sangle d'arrimage"
+      - "Bouteille couchée au sol ou en équilibre contre un mur"
+      - "Chapeau de protection absent sur une bouteille non raccordée"
+      - "Bouteilles pleines et vides mélangées sans identification"
+      - "Stockage près d'une source de chaleur, en local fermé non ventilé, ou oxygène et acétylène côte à côte sans séparation"
+    exclusions:
+      - "Bouteilles fixées sur un chariot de soudage avec chaîne"
+      - "Stockage extérieur grillagé, ventilé, avec bouteilles arrimées"
+    action_immediate: "Arrimer, remettre les chapeaux, séparer les gaz incompatibles, éloigner des sources de chaleur"
+
+  - id: IND-12
+    titre: Ordre, propreté et déversements
+    categorie: ordre_proprete
+    description: >
+      L'état du sol et des postes crée un risque de glissade, de chute, de
+      trébuchement ou d'incendie.
+    criticite_defaut: 2
+    exigences: [45001-9.1.1a, 45001-8.1.1a]
+    reference_reglementaire: "Code du travail (loi 65-99), Titre IV — à vérifier"
+    indices_visuels:
+      - "Flaque d'huile, d'eau ou de produit au sol sans signalisation"
+      - "Copeaux, déchets, emballages ou chiffons gras accumulés"
+      - "Poste encombré au point de gêner les mouvements de l'opérateur"
+      - "Câbles ou tuyaux traversant un passage sans protection"
+      - "Poubelles débordantes ou déchets inflammables près d'un poste chaud"
+    exclusions:
+      - "Zone en cours de nettoyage signalée (panneau, cône, personnel de nettoyage présent)"
+      - "Déchets dans des contenants identifiés, en attente d'enlèvement"
+    action_immediate: "Nettoyer, absorber, signaler ; retirer les déchets inflammables"

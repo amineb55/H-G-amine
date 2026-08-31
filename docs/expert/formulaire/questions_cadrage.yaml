@@ -1,0 +1,392 @@
+# =====================================================================
+# FORMULAIRE DE CADRAGE — questions
+# Statut : BROUILLON v0.1 — à valider par Amine Boukha (ordre, formulation,
+#          seuils). Les 8 sections reprennent la logique du cahier des charges
+#          (§4.1.1) ; les numéros de section sont à faire correspondre.
+# Champs : secteur (tous | btp | bureaux | industrie | sante | logistique |
+#          horeca), norme (tous | 45001 | 9001 | 14001 | 50001),
+#          seuil_minimal (oui = obligatoire pour lancer la génération v1),
+#          documents / exigences = ce que la réponse alimente,
+#          pourquoi = aide affichée à l'utilisateur (le « pourquoi on demande »).
+# =====================================================================
+version: "0.1-brouillon"
+sections:
+  1: "Identité et organisation"
+  2: "Périmètre et normes visées"
+  3: "Contexte et parties intéressées"
+  4: "Direction et gouvernance"
+  5: "Processus, activités et dangers"
+  6: "Risques, réglementation et urgences"
+  7: "Ressources, compétences, infrastructures (et énergie pour 50001)"
+  8: "Existant documentaire, objectifs et attentes"
+
+questions:
+  - {id: Q01, section: 1, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Raison sociale, forme juridique, adresse du siège et liste des sites concernés (nom, adresse, activité de chaque site).",
+     documents: [declaration_domaine_application], exigences: [45001-4.3],
+     pourquoi: "Fixe le périmètre du système et le cartouche de tous les documents."}
+  - {id: Q02, section: 1, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: choix_et_texte,
+     question: "Secteur d'activité principal et activités secondaires. Précisez celles réalisées chez des clients ou sur chantier.",
+     documents: [declaration_domaine_application, cartographie_processus], exigences: [45001-4.3, 45001-4.4],
+     pourquoi: "Sélectionne les règles terrain sectorielles et les questions spécifiques."}
+  - {id: Q03, section: 1, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: nombres,
+     question: "Effectif : permanents, temporaires ou intérimaires, saisonniers, stagiaires, et sous-traitants habituellement présents sur site.",
+     documents: [analyse_risques, politique_sst], exigences: [45001-4.2, 45001-8.1.4.2a],
+     pourquoi: "Déclenche les obligations liées à l'effectif (comité, médecine du travail) et le périmètre des personnes à protéger."}
+  - {id: Q04, section: 1, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: choix_multiple,
+     question: "Organisation du temps de travail : horaires, travail posté, nuit, week-end, astreintes, travail isolé.",
+     documents: [analyse_risques, plan_urgence], exigences: [45001-6.1.2.1, 45001-8.2c],
+     pourquoi: "Le travail de nuit et isolé change les scénarios d'urgence et l'accès aux secours."}
+  - {id: Q05, section: 1, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: texte_ou_fichier,
+     question: "Organigramme : qui dirige, qui encadre, où se situe la fonction QSE (temps plein ou partiel, rattachement).",
+     documents: [organigramme, matrice_responsabilites], exigences: [45001-5.3],
+     pourquoi: "Alimente les responsabilités dans chaque procédure."}
+  - {id: Q06, section: 1, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: choix_multiple,
+     question: "Instances existantes : comité de sécurité et d'hygiène, délégués du personnel, médecin du travail (interne ou externe, fréquence), secouristes formés.",
+     documents: [procedure_consultation_participation, pv_csh], exigences: [45001-5.4a, 45001-7.1],
+     pourquoi: "Vérifie les obligations légales de consultation et de suivi médical."}
+  - {id: Q07, section: 1, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: choix_multiple,
+     question: "Langues parlées et lues par le personnel opérationnel (arabe, amazigh, français, autres). Part du personnel ne lisant pas le français.",
+     documents: [support_sensibilisation, procedure_communication], exigences: [45001-7.3, 45001-7.4.1],
+     pourquoi: "Adapte les supports terrain (pictogrammes, langue) ; une consigne non comprise n'existe pas."}
+
+  - {id: Q08, section: 2, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: choix,
+     question: "Norme(s) visée(s) et objectif : structuration interne, certification initiale, renouvellement, réponse à un appel d'offres.",
+     documents: [declaration_domaine_application], exigences: [45001-4.3],
+     pourquoi: "Charge le bon modèle d'exigences et calibre le niveau de détail."}
+  - {id: Q09, section: 2, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: date_et_texte,
+     question: "Date cible (audit à blanc, certification) et organisme certificateur pressenti.",
+     documents: [programme_audit], exigences: [45001-9.2.2],
+     pourquoi: "Permet de rétro-planifier la construction du système et les audits internes."}
+  - {id: Q10, section: 2, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Sites, activités ou fonctions que vous souhaitez exclure du périmètre, et pourquoi.",
+     documents: [declaration_domaine_application], exigences: [45001-4.3],
+     pourquoi: "Une exclusion doit être justifiée ; l'agent alerte si une activité dangereuse est exclue."}
+  - {id: Q11, section: 2, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Certifications, labels ou systèmes déjà en place (autre norme, exigences de groupe) et documents réutilisables.",
+     documents: [liste_documents], exigences: [45001-7.5.1],
+     pourquoi: "Évite de recréer ce qui existe ; prépare l'intégration QSE."}
+  - {id: Q12, section: 2, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: choix,
+     question: "Langue des documents à produire (français ou anglais) et langue de la signalisation terrain.",
+     documents: [procedure_maitrise_documentaire], exigences: [45001-7.5.2],
+     pourquoi: "Paramètre de génération de la plateforme."}
+
+  - {id: Q13, section: 3, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Les trois principaux enjeux internes (turnover, vétusté, croissance, sous-traitance, culture) et externes (clients, réglementation, concurrence, climat) qui pèsent sur la santé-sécurité.",
+     documents: [analyse_contexte], exigences: [45001-4.1],
+     pourquoi: "Point d'entrée de l'analyse de contexte ; évite une analyse générique."}
+  - {id: Q14, section: 3, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Clients ou donneurs d'ordre qui exigent une certification ou des règles SST particulières : lesquels, quelles règles.",
+     documents: [registre_parties_interessees, registre_exigences_legales], exigences: [45001-4.2, 45001-6.1.3a],
+     pourquoi: "Les exigences clients deviennent des « autres exigences » du registre."}
+  - {id: Q15, section: 3, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Autorités et organismes en relation avec vous (inspection du travail, CNSS, ONSSA, environnement, protection civile, assureur) et contrôles ou procès-verbaux reçus ces trois dernières années.",
+     documents: [registre_parties_interessees, registre_exigences_legales], exigences: [45001-4.2, 45001-9.1.2],
+     pourquoi: "Un PV récent est un écart réglementaire à traiter en priorité."}
+  - {id: Q16, section: 3, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Attentes exprimées par les travailleurs ou leurs représentants (réclamations, demandes, conflits, plaintes).",
+     documents: [registre_parties_interessees], exigences: [45001-4.2, 45001-5.4a],
+     pourquoi: "Les travailleurs sont la première partie intéressée de la norme."}
+  - {id: Q17, section: 3, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Accidents ou incidents marquants des cinq dernières années (nature, gravité, conséquences).",
+     documents: [analyse_risques, procedure_incident], exigences: [45001-6.1.2.1, 45001-10.2a],
+     pourquoi: "L'historique oriente l'identification des dangers et la priorité des règles terrain."}
+
+  - {id: Q18, section: 4, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Qui signera la politique et qui présidera la revue de direction (nom, fonction) ?",
+     documents: [politique_sst, compte_rendu_revue_direction], exigences: [45001-5.1a, 45001-5.2],
+     pourquoi: "Une politique signée par le responsable QSE est une non-conformité classique."}
+  - {id: Q19, section: 4, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: choix_multiple,
+     question: "Engagements que la direction accepte réellement de tenir : arrêt de travaux en cas de danger, budget SST annuel, visites terrain régulières, non-représailles pour les signalements, consultation avant décision.",
+     documents: [politique_sst], exigences: [45001-5.1a, 45001-5.1b],
+     pourquoi: "La politique ne doit contenir que des engagements tenables ; l'auditeur les vérifiera."}
+  - {id: Q20, section: 4, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Comment les travailleurs sont-ils, ou seront-ils, consultés (comité, réunions d'équipe, boîte à idées, application) et à quelle fréquence ?",
+     documents: [procedure_consultation_participation], exigences: [45001-5.4a],
+     pourquoi: "Exigence propre à la 45001, souvent la moins bien traitée."}
+  - {id: Q21, section: 4, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Qui a l'autorité d'arrêter une machine, un chantier ou une tâche dangereuse ? Est-ce écrit quelque part ?",
+     documents: [matrice_responsabilites, procedure_maitrise_operationnelle], exigences: [45001-5.3, 45001-8.1.1a],
+     pourquoi: "Alimente la matrice des responsabilités et la procédure de maîtrise opérationnelle."}
+  - {id: Q22, section: 4, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Comment les responsables d'équipe sont-ils évalués sur la sécurité (objectifs, primes, entretiens annuels) ?",
+     documents: [fiche_de_poste, objectifs_sst], exigences: [45001-5.1a, 45001-6.2.1],
+     pourquoi: "Révèle si la SST est intégrée au management ou reste à côté."}
+
+  - {id: Q23, section: 5, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Liste de vos processus : management, réalisation (de la commande à la livraison), support (RH, achats, maintenance, informatique), avec leur pilote.",
+     documents: [cartographie_processus, fiche_processus], exigences: [45001-4.4],
+     pourquoi: "Base de la cartographie ; l'agent propose une cartographie type du secteur si la réponse est vide."}
+  - {id: Q24, section: 5, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: choix_multiple,
+     question: "Activités dangereuses présentes : travail en hauteur, engins et chariots, produits chimiques, électricité, espaces confinés, points chauds, manutention manuelle, bruit, vibrations, conduite routière, travail isolé, contact avec le public, rayonnements, risque biologique, températures extrêmes.",
+     documents: [analyse_risques, registre_habilitations], exigences: [45001-6.1.2.1, 45001-7.2b],
+     pourquoi: "Chaque case cochée active des dangers types, des habilitations et des règles terrain."}
+  - {id: Q25, section: 5, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Tâches confiées à des sous-traitants et activités externalisées (maintenance, transport, nettoyage, gardiennage, restauration).",
+     documents: [procedure_sous_traitants, liste_processus_externalises], exigences: [45001-8.1.4.2a, 45001-8.1.4.3],
+     pourquoi: "Les sous-traitants sont dans le périmètre ; leurs accidents comptent."}
+  - {id: Q26, section: 5, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Situations de coactivité : d'autres entreprises travaillent-elles sur votre site, vos équipes interviennent-elles chez des clients ? Qui coordonne aujourd'hui ?",
+     documents: [plan_prevention], exigences: [45001-8.1.1b],
+     pourquoi: "Déclenche la génération du plan de prévention type."}
+  - {id: Q27, section: 5, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Équipements et installations majeurs (machines, engins, chaudières, compresseurs, ascenseurs, installation électrique) et contrôles périodiques déjà réalisés, avec dates.",
+     documents: [planning_controles_reglementaires, registre_verification_equipements], exigences: [45001-6.1.3b, 45001-9.1.1b],
+     pourquoi: "Construit le planning des contrôles réglementaires et repère les retards."}
+  - {id: Q28, section: 5, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Principaux changements prévus dans les douze mois : nouveau site, machine, produit, réorganisation, croissance d'effectif.",
+     documents: [procedure_gestion_changement], exigences: [45001-8.1.3],
+     pourquoi: "Un changement non analysé est une source majeure d'accidents."}
+  - {id: Q29, section: 5, secteur: btp, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Qui autorise le démarrage d'une tâche en hauteur, d'un levage ou d'une fouille, et sur quel document ?",
+     documents: [procedure_maitrise_operationnelle, permis_de_travail], exigences: [45001-8.1.1a],
+     pourquoi: "Alimente les permis de travail types du chantier."}
+  - {id: Q30, section: 5, secteur: btp, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Échafaudages et plateformes : qui les monte, qui les réceptionne, à quelle fréquence sont-ils vérifiés ?",
+     documents: [instruction_travail, registre_verification_equipements], exigences: [45001-8.1.1a, 45001-9.1.1b],
+     pourquoi: "Première cause d'accidents graves sur chantier."}
+  - {id: Q31, section: 5, secteur: btp, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Engins de levage et de terrassement : liste, conducteurs, formations et autorisations existantes.",
+     documents: [registre_habilitations], exigences: [45001-7.2b],
+     pourquoi: "Alimente le registre des habilitations."}
+  - {id: Q32, section: 5, secteur: btp, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Organisation des chantiers : base vie, clôture et accès, accueil des nouveaux arrivants, sous-traitance en cascade.",
+     documents: [plan_prevention, livret_accueil], exigences: [45001-8.1.1b, 45001-7.2a],
+     pourquoi: "Adapte le livret d'accueil et le plan de prévention au chantier."}
+  - {id: Q33, section: 5, secteur: industrie, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Machines présentant des parties mobiles ou des énergies dangereuses : lesquelles ? Existe-t-il une procédure de consignation ?",
+     documents: [procedure_maitrise_operationnelle], exigences: [45001-8.1.1a, 45001-8.1.2a],
+     pourquoi: "Déclenche la procédure de consignation et les règles IND-01 / IND-02."}
+  - {id: Q34, section: 5, secteur: industrie, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Inventaire des produits chimiques : nombre, dangers principaux, disponibilité des fiches de données de sécurité, lieux de stockage.",
+     documents: [liste_documents_externes, analyse_risques], exigences: [45001-7.5.3b, 45001-6.1.2.1],
+     pourquoi: "Alimente la liste des documents externes et le risque chimique."}
+  - {id: Q35, section: 5, secteur: industrie, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Zones à atmosphère explosive, équipements sous pression, sources de bruit ou de poussières : lesquelles, et mesures d'exposition déjà réalisées.",
+     documents: [analyse_risques, procedure_surveillance_mesure], exigences: [45001-9.1.1a],
+     pourquoi: "Planifie les mesures d'exposition à réaliser."}
+  - {id: Q36, section: 5, secteur: industrie, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Organisation de la maintenance : interne ou externe, interventions en marche, travaux par points chauds.",
+     documents: [permis_de_travail, procedure_sous_traitants], exigences: [45001-8.1.1a, 45001-8.1.4.2b],
+     pourquoi: "La maintenance concentre les accidents graves en industrie."}
+  - {id: Q37, section: 5, secteur: sante, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Accidents d'exposition au sang : existe-t-il un protocole, une conduite à tenir affichée, un suivi ?",
+     documents: [procedure_incident, instruction_travail], exigences: [45001-8.1.1a, 45001-10.2a],
+     pourquoi: "Risque le plus fréquent pour le personnel soignant."}
+  - {id: Q38, section: 5, secteur: sante, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Filière des déchets médicaux et pharmaceutiques : tri, stockage, prestataire agréé, traçabilité.",
+     documents: [procedure_maitrise_operationnelle], exigences: [45001-8.1.1a, 45001-6.1.3b],
+     pourquoi: "Obligation réglementaire spécifique au secteur."}
+  - {id: Q39, section: 5, secteur: sante, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Suivi médical et vaccinal du personnel exposé ; radioprotection (personne compétente, dosimétrie) si sources de rayonnements.",
+     documents: [dossier_medecine_travail, registre_habilitations], exigences: [45001-7.2b, 45001-9.1.1a],
+     pourquoi: "Alimente les habilitations et le suivi des expositions."}
+  - {id: Q40, section: 5, secteur: sante, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Violence et agressions envers le personnel : fréquence, dispositif d'alerte, formation du personnel d'accueil.",
+     documents: [analyse_risques, plan_urgence], exigences: [45001-6.1.2.1, 45001-8.2a],
+     pourquoi: "Scénario d'urgence souvent oublié dans les établissements de santé."}
+  - {id: Q41, section: 5, secteur: logistique, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Parc d'engins (types, nombre), conducteurs et autorisations, existence d'un plan de circulation.",
+     documents: [registre_habilitations, procedure_maitrise_operationnelle], exigences: [45001-7.2b, 45001-8.1.1a],
+     pourquoi: "Active les règles LOG-03 / LOG-04 et le plan de circulation type."}
+  - {id: Q42, section: 5, secteur: logistique, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Quais : nombre, dispositifs de sécurisation (cales, blocage de remorque, niveleurs) et incidents passés.",
+     documents: [analyse_risques], exigences: [45001-6.1.2.1],
+     pourquoi: "Active la règle LOG-05 et le protocole de sécurité chargement / déchargement."}
+  - {id: Q43, section: 5, secteur: logistique, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Rayonnages : dernière vérification, plaques de charge, procédure en cas de choc.",
+     documents: [registre_verification_equipements], exigences: [45001-9.1.1b, 45001-6.1.3b],
+     pourquoi: "Active la règle LOG-01 et la vérification périodique."}
+  - {id: Q44, section: 5, secteur: logistique, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Matières dangereuses stockées ou transportées (classes, quantités) ; transport routier (chauffeurs, temps de conduite, véhicules).",
+     documents: [analyse_risques, registre_exigences_legales], exigences: [45001-6.1.2.1, 45001-6.1.3a],
+     pourquoi: "Ajoute les textes transport et matières dangereuses au registre."}
+  - {id: Q45, section: 5, secteur: horeca, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Installation au gaz : bouteilles ou réseau, emplacement, vanne de coupure, dernière vérification des flexibles.",
+     documents: [analyse_risques, planning_controles_reglementaires], exigences: [45001-6.1.2.1, 45001-6.1.3b],
+     pourquoi: "Active la règle HOR-03, risque majeur en cuisine."}
+  - {id: Q46, section: 5, secteur: horeca, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Hygiène alimentaire : système existant (HACCP, autocontrôles, agrément ou autorisation ONSSA) ; effectif saisonnier et extras.",
+     documents: [registre_exigences_legales, plan_formation], exigences: [45001-6.1.3a, 45001-7.2a],
+     pourquoi: "Les extras non formés sont un risque récurrent ; l'ONSSA impose l'autocontrôle."}
+  - {id: Q47, section: 5, secteur: horeca, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Capacité d'accueil autorisée, issues de secours, dernier passage de la protection civile.",
+     documents: [plan_urgence], exigences: [45001-8.2a],
+     pourquoi: "Établissement recevant du public : règles d'évacuation renforcées."}
+  - {id: Q48, section: 5, secteur: horeca, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Entretien des hottes et de l'extraction ; moyens d'extinction en cuisine (couverture anti-feu, extincteurs adaptés).",
+     documents: [planning_controles_reglementaires, plan_urgence], exigences: [45001-6.1.3b, 45001-8.2a],
+     pourquoi: "Active les règles HOR-02 et HOR-04."}
+  - {id: Q49, section: 5, secteur: bureaux, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Postes sur écran : nombre et aménagement ; télétravail ; situations de travail isolé ou d'accueil du public.",
+     documents: [analyse_risques], exigences: [45001-6.1.2.1],
+     pourquoi: "Dangers types du tertiaire : troubles musculo-squelettiques, risques psychosociaux, agression."}
+  - {id: Q50, section: 5, secteur: bureaux, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Bâtiment : contrôles électriques et incendie, ascenseurs, accessibilité, date et résultat du dernier exercice d'évacuation.",
+     documents: [planning_controles_reglementaires, registre_exercices], exigences: [45001-6.1.3b, 45001-8.2b],
+     pourquoi: "Dans les bureaux, l'essentiel des obligations porte sur le bâtiment."}
+
+  - {id: Q51, section: 6, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: texte_ou_fichier,
+     question: "Méthode d'évaluation des risques déjà utilisée (grille, date, auteur, participation des travailleurs) — ou absence de méthode.",
+     documents: [procedure_evaluation_risques, analyse_risques], exigences: [45001-6.1.2.2],
+     pourquoi: "L'agent réutilise la méthode existante ou propose la grille du barème."}
+  - {id: Q52, section: 6, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: nombres,
+     question: "Statistiques sur trois ans : accidents avec et sans arrêt, jours perdus, maladies professionnelles ; les presqu'accidents sont-ils enregistrés ?",
+     documents: [tableau_indicateurs, registre_accidents], exigences: [45001-9.1.1a, 45001-10.2a],
+     pourquoi: "Point de départ des indicateurs et des objectifs chiffrés."}
+  - {id: Q53, section: 6, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Textes réglementaires déjà identifiés comme applicables, et personne chargée de la veille.",
+     documents: [registre_exigences_legales, procedure_veille_reglementaire], exigences: [45001-6.1.3a],
+     pourquoi: "L'agent complète avec les textes structurants du secteur, marqués « à vérifier »."}
+  - {id: Q54, section: 6, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: choix_multiple,
+     question: "Scénarios d'urgence redoutés (incendie, explosion, fuite, malaise, agression, inondation, coupure d'énergie) et moyens en place (alarme, extincteurs, RIA, secouristes, point de rassemblement).",
+     documents: [plan_urgence], exigences: [45001-8.2a],
+     pourquoi: "Construit le plan d'urgence par site."}
+  - {id: Q55, section: 6, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Date et résultat du dernier exercice d'évacuation ; les équipes de nuit et les sites secondaires ont-ils été exercés ?",
+     documents: [registre_exercices], exigences: [45001-8.2b],
+     pourquoi: "Un exercice jamais fait de nuit est un constat classique."}
+  - {id: Q56, section: 6, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Comment un accident est-il déclaré aujourd'hui (délai, destinataires, formulaire), et qui mène l'enquête ?",
+     documents: [procedure_incident], exigences: [45001-10.2a, 45001-7.4.3],
+     pourquoi: "Alimente la procédure incident et vérifie les délais légaux."}
+
+  - {id: Q57, section: 7, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: texte_ou_fichier,
+     question: "Formations SST réalisées ces deux dernières années et habilitations existantes (engins, électricité, hauteur, secourisme, incendie) avec dates de validité.",
+     documents: [plan_formation, registre_habilitations], exigences: [45001-7.2a, 45001-7.2b],
+     pourquoi: "Construit la matrice des compétences et repère les habilitations expirées."}
+  - {id: Q58, section: 7, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Accueil des nouveaux et des intérimaires : existe-t-il un parcours, un livret, un tuteur ?",
+     documents: [livret_accueil], exigences: [45001-7.2a],
+     pourquoi: "Les nouveaux arrivants ont le plus d'accidents."}
+  - {id: Q59, section: 7, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "EPI fournis par poste, mode de dotation et de renouvellement, contrôle du port.",
+     documents: [registre_epi, fiche_dotation_epi], exigences: [45001-8.1.2b],
+     pourquoi: "Alimente le tableau des EPI par poste."}
+  - {id: Q60, section: 7, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Budget SST disponible (montant ou ordre de grandeur) et temps réellement consacré par la fonction QSE.",
+     documents: [budget_sst], exigences: [45001-7.1],
+     pourquoi: "Permet de proposer des objectifs réalistes."}
+  - {id: Q61, section: 7, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Outils numériques utilisés (GED, GMAO, application de signalement, tableur) et lieu de stockage des documents.",
+     documents: [procedure_maitrise_documentaire], exigences: [45001-7.5.3a],
+     pourquoi: "Adapte la procédure de maîtrise documentaire aux outils réels."}
+  - {id: Q62, section: 7, secteur: tous, norme: 50001, seuil_minimal: oui, type_reponse: texte,
+     question: "Sources d'énergie utilisées (électricité, gaz, fioul, propane, solaire) et compteurs ou sous-compteurs existants.",
+     documents: [revue_energetique, registre_compteurs], exigences: [50001-6.3a, 50001-6.6],
+     pourquoi: "Base de la revue énergétique et du plan de collecte."}
+  - {id: Q63, section: 7, secteur: tous, norme: 50001, seuil_minimal: oui, type_reponse: oui_non_fichier,
+     question: "Disposez-vous des factures d'énergie des douze derniers mois ? Sous quel format ?",
+     documents: [revue_energetique, situation_energetique_reference], exigences: [50001-6.3a, 50001-6.5],
+     pourquoi: "Sans douze mois de données, pas de situation de référence."}
+  - {id: Q64, section: 7, secteur: tous, norme: 50001, seuil_minimal: oui, type_reponse: texte,
+     question: "Équipements ou procédés les plus consommateurs, et personnes qui les exploitent.",
+     documents: [liste_usages_significatifs], exigences: [50001-6.3b, 50001-7.2],
+     pourquoi: "Identifie les usages énergétiques significatifs et les personnes à former."}
+  - {id: Q65, section: 7, secteur: tous, norme: 50001, seuil_minimal: non, type_reponse: texte,
+     question: "Variables qui influencent la consommation (production, météo, occupation, horaires) et projets d'efficacité en cours ou prévus.",
+     documents: [revue_energetique, objectifs_energie], exigences: [50001-6.3a, 50001-6.3c, 50001-6.2],
+     pourquoi: "Nécessaire pour normaliser les indicateurs de performance énergétique."}
+
+  - {id: Q66, section: 8, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: fichiers,
+     question: "Documents existants (politique, procédures, fiches, registres, manuel) : liste, format, date, et état d'application réel.",
+     documents: [liste_documents], exigences: [45001-7.5.1],
+     pourquoi: "L'agent analyse l'existant avant de générer ; il ne remplace pas ce qui fonctionne."}
+  - {id: Q67, section: 8, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Indicateurs déjà suivis et tableau de bord existant.",
+     documents: [tableau_indicateurs], exigences: [45001-9.1.1a],
+     pourquoi: "Réutilise les indicateurs en place."}
+  - {id: Q68, section: 8, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: texte,
+     question: "Objectifs souhaités à douze mois (résultats et moyens) et contraintes (délai, budget, disponibilité des équipes).",
+     documents: [objectifs_sst, programme_sst], exigences: [45001-6.2.1, 45001-6.2.2],
+     pourquoi: "Alimente les objectifs et le programme."}
+  - {id: Q69, section: 8, secteur: tous, norme: tous, seuil_minimal: oui, type_reponse: choix,
+     question: "Niveau de détail attendu des documents (procédures courtes illustrées pour le terrain / documents détaillés pour l'audit) et circuit rédaction – vérification – approbation.",
+     documents: [procedure_maitrise_documentaire], exigences: [45001-7.5.2],
+     pourquoi: "Paramètre le générateur et le cartouche."}
+  - {id: Q70, section: 8, secteur: tous, norme: tous, seuil_minimal: non, type_reponse: texte,
+     question: "Audits internes déjà réalisés (par qui, quand, résultats) et disponibilité d'auditeurs internes formés.",
+     documents: [programme_audit, rapport_audit], exigences: [45001-9.2.1, 45001-9.2.2],
+     pourquoi: "Prépare le programme d'audit et le besoin de formation d'auditeurs."}
+
+  # --- Questions spécifiques ISO 9001 (affichées si 9001 est choisie) ---
+  - {id: Q71, section: 5, secteur: tous, norme: 9001, seuil_minimal: oui, type_reponse: texte,
+     question: "Principaux produits ou services vendus, et types de clients (particuliers, entreprises, administrations, export).",
+     documents: [cahier_charges_produit, cartographie_processus], exigences: [9001-8.2.2, 9001-4.4.1],
+     pourquoi: "Définit ce que le système doit maîtriser et les exigences réglementaires produit à rechercher."}
+  - {id: Q72, section: 5, secteur: tous, norme: 9001, seuil_minimal: oui, type_reponse: texte,
+     question: "Exigences des clients formalisées : contrats types, spécifications, cahiers des charges, labels ou normes produit imposés.",
+     documents: [cahier_charges_produit, revue_contrat], exigences: [9001-8.2.2, 9001-8.2.3],
+     pourquoi: "Alimente la revue des exigences et la liste des exigences produit."}
+  - {id: Q73, section: 5, secteur: tous, norme: 9001, seuil_minimal: oui, type_reponse: choix_et_texte,
+     question: "Concevez-vous ou développez-vous vos produits ou services (nouveaux produits, personnalisation, nouvelles prestations) ? Décrivez comment.",
+     documents: [procedure_conception, declaration_domaine_application], exigences: [9001-8.3a, 45001-4.3],
+     pourquoi: "Décide de l'applicabilité de la conception ; une exclusion abusive est une non-conformité classique."}
+  - {id: Q74, section: 5, secteur: tous, norme: 9001, seuil_minimal: oui, type_reponse: texte,
+     question: "Prestataires critiques pour la conformité de vos produits (matières, sous-traitance, transport, étalonnage, informatique) et façon dont ils sont évalués aujourd'hui.",
+     documents: [liste_prestataires_approuves, evaluation_prestataires_externes], exigences: [9001-8.4.1, 9001-8.4.2],
+     pourquoi: "Construit la liste des prestataires approuvés et la grille d'évaluation."}
+  - {id: Q75, section: 5, secteur: tous, norme: 9001, seuil_minimal: oui, type_reponse: texte,
+     question: "Contrôles réalisés sur les produits (réception, en cours, final), qui autorise la livraison, et que faites-vous des produits non conformes ?",
+     documents: [plan_controle, fiche_liberation, procedure_produit_non_conforme], exigences: [9001-8.6, 9001-8.7, 9001-8.5.1],
+     pourquoi: "Alimente le plan de contrôle, la libération et la maîtrise du produit non conforme."}
+  - {id: Q76, section: 6, secteur: tous, norme: 9001, seuil_minimal: oui, type_reponse: texte,
+     question: "Réclamations clients des douze derniers mois (nombre, motifs principaux) et mesure de la satisfaction existante.",
+     documents: [fiche_reclamation_client, enquete_satisfaction], exigences: [9001-8.2.1, 9001-9.1.2],
+     pourquoi: "Point de départ des indicateurs qualité et des actions correctives."}
+  - {id: Q77, section: 5, secteur: tous, norme: 9001, seuil_minimal: non, type_reponse: texte,
+     question: "Traçabilité exigée (par les clients ou la réglementation) et biens confiés par les clients (matières, outillages, données).",
+     documents: [procedure_tracabilite, registre_proprietes_client], exigences: [9001-8.5.2, 9001-8.5.3],
+     pourquoi: "Décide du niveau de traçabilité et de la gestion des propriétés clients."}
+  - {id: Q78, section: 5, secteur: tous, norme: 9001, seuil_minimal: non, type_reponse: texte,
+     question: "Procédés dont le résultat ne peut pas être vérifié après coup (soudure, collage, traitement thermique, stérilisation, prestation en direct) et comment ils sont validés.",
+     documents: [dossier_validation_procede], exigences: [9001-8.5.1],
+     pourquoi: "Identifie les procédés spéciaux à valider."}
+  - {id: Q79, section: 7, secteur: tous, norme: 9001, seuil_minimal: non, type_reponse: texte,
+     question: "Instruments de contrôle des produits (liste, étalonnage, prestataire) et connaissances critiques détenues par une seule personne.",
+     documents: [registre_verification_equipements, registre_connaissances], exigences: [9001-7.1.5, 9001-7.1.6],
+     pourquoi: "Alimente le suivi métrologique et la gestion des connaissances."}
+  # --- Questions spécifiques ISO 14001 (affichées si 14001 est choisie) ---
+  - {id: Q80, section: 5, secteur: tous, norme: 14001, seuil_minimal: oui, type_reponse: texte,
+     question: "Rejets dans l'eau et dans l'air (nature, points de rejet, traitement en place) et autorisations ou déclarations détenues.",
+     documents: [registre_aspects_impacts, autorisations_environnementales], exigences: [14001-6.1.2a, 14001-6.1.3a],
+     pourquoi: "Base des aspects significatifs et des obligations de conformité."}
+  - {id: Q81, section: 5, secteur: tous, norme: 14001, seuil_minimal: oui, type_reponse: texte,
+     question: "Déchets produits (types, quantités approximatives, dangereux ou non), prestataires d'enlèvement et preuves d'élimination disponibles.",
+     documents: [registre_dechets, contrat_prestataire_dechets], exigences: [14001-8.1c],
+     pourquoi: "Construit le registre des déchets et vérifie les filières."}
+  - {id: Q82, section: 5, secteur: tous, norme: 14001, seuil_minimal: oui, type_reponse: nombres,
+     question: "Consommations annuelles d'eau, d'énergie et de principales matières (ordre de grandeur, source des chiffres).",
+     documents: [bilan_consommations_rejets, tableau_indicateurs], exigences: [14001-9.1.1, 14001-6.1.2a],
+     pourquoi: "Premiers indicateurs environnementaux."}
+  - {id: Q83, section: 5, secteur: tous, norme: 14001, seuil_minimal: oui, type_reponse: texte,
+     question: "Stockages de produits dangereux, de carburant et d'huiles : lieux, quantités, rétentions, état des sols.",
+     documents: [registre_aspects_impacts, plan_urgence], exigences: [14001-8.1a, 14001-8.2],
+     pourquoi: "Active les règles ENV-02, ENV-08 et les scénarios d'urgence environnementale."}
+  - {id: Q84, section: 3, secteur: tous, norme: 14001, seuil_minimal: non, type_reponse: texte,
+     question: "Voisinage (habitations, cours d'eau, zone protégée) et plaintes ou contrôles environnementaux reçus.",
+     documents: [registre_parties_interessees, registre_communications_externes], exigences: [14001-4.1, 14001-7.4.3],
+     pourquoi: "Identifie les parties intéressées environnementales et les points sensibles."}
+  - {id: Q85, section: 6, secteur: tous, norme: 14001, seuil_minimal: non, type_reponse: texte,
+     question: "Étude d'impact ou autorisation environnementale réalisée pour le site ? Obligations environnementales déjà connues ?",
+     documents: [autorisations_environnementales, registre_exigences_legales], exigences: [14001-6.1.3a],
+     pourquoi: "Rattache les prescriptions de l'autorisation au registre des obligations."}
+  - {id: Q86, section: 6, secteur: tous, norme: 14001, seuil_minimal: non, type_reponse: choix_multiple,
+     question: "Scénarios d'urgence environnementale redoutés (déversement, fuite de gaz réfrigérant, incendie avec eaux d'extinction, inondation) et moyens en place (kits absorbants, obturateurs, rétentions).",
+     documents: [plan_urgence], exigences: [14001-8.2],
+     pourquoi: "Construit le volet environnemental du plan d'urgence."}
+  - {id: Q87, section: 5, secteur: tous, norme: 14001, seuil_minimal: non, type_reponse: texte,
+     question: "Critères environnementaux déjà appliqués dans les achats, la conception ou vis-à-vis des fournisseurs ; information donnée aux clients sur la fin de vie des produits.",
+     documents: [cahier_charges_env, fiche_cycle_de_vie], exigences: [14001-8.1b],
+     pourquoi: "Alimente la perspective de cycle de vie."}
+  - {id: Q88, section: 8, secteur: tous, norme: 14001, seuil_minimal: non, type_reponse: texte,
+     question: "Objectifs environnementaux souhaités (réduction de déchets, d'eau, d'énergie, substitution de produits) et contraintes.",
+     documents: [objectifs_environnementaux, programme_environnemental], exigences: [14001-6.2],
+     pourquoi: "Alimente les objectifs et le programme environnemental."}
+
+seuil_minimal_regle: >
+  La génération v1 démarre quand toutes les questions « seuil_minimal: oui »
+  applicables (secteur et norme choisis) ont une réponse non vide. Les autres
+  questions peuvent être renseignées après ; les documents concernés sont alors
+  régénérés. Proposition : afficher un compteur du type « 24/24 réponses obligatoires » (le total dépend des normes et du secteur choisis)
+  et lister celles qui manquent.

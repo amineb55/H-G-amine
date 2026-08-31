@@ -1,0 +1,150 @@
+# =====================================================================
+# TYPES DE DOCUMENTS — liste maîtresse (référentiel de slugs)
+# Chaque slug utilisé dans `documents_types` du modèle d'exigences doit
+# exister ici : le loader refuse toute référence inconnue.
+# familles : politique | processus | procedure | instruction | plan |
+#            programme | registre | enregistrement | rapport | liste | externe
+# Statut : BROUILLON v0.1 — libellés à ajuster par Amine au vocabulaire
+#          qu'il utilise chez ses clients.
+# =====================================================================
+
+analyse_contexte:                 {libelle: "Analyse de contexte (enjeux internes/externes)", famille: enregistrement}
+registre_parties_interessees:     {libelle: "Registre des parties intéressées et de leurs attentes", famille: registre}
+declaration_domaine_application:  {libelle: "Déclaration du domaine d'application", famille: politique}
+cartographie_processus:           {libelle: "Cartographie des processus", famille: processus}
+fiche_processus:                  {libelle: "Fiche processus", famille: processus}
+manuel_sst:                       {libelle: "Manuel du système (optionnel)", famille: politique}
+politique_sst:                    {libelle: "Politique santé-sécurité", famille: politique}
+compte_rendu_revue_direction:     {libelle: "Compte rendu de revue de direction", famille: enregistrement}
+pv_comite_direction:              {libelle: "PV de comité de direction (volet SST)", famille: enregistrement}
+programme_visites_securite:       {libelle: "Programme et comptes rendus de visites sécurité de la direction", famille: programme}
+organigramme:                     {libelle: "Organigramme", famille: liste}
+fiche_de_poste:                   {libelle: "Fiche de poste (avec volet SST)", famille: enregistrement}
+matrice_responsabilites:          {libelle: "Matrice des responsabilités et autorités", famille: liste}
+procedure_consultation_participation: {libelle: "Procédure de consultation et participation des travailleurs", famille: procedure}
+pv_csh:                           {libelle: "PV du comité de sécurité et d'hygiène", famille: enregistrement}
+fiche_remontee_danger:            {libelle: "Fiche de remontée de danger / presqu'accident", famille: enregistrement}
+registre_risques_opportunites:    {libelle: "Registre des risques et opportunités du système", famille: registre}
+procedure_identification_dangers: {libelle: "Procédure d'identification des dangers", famille: procedure}
+registre_dangers:                 {libelle: "Registre / inventaire des dangers", famille: registre}
+procedure_evaluation_risques:     {libelle: "Procédure d'évaluation des risques (méthode de cotation)", famille: procedure}
+analyse_risques:                  {libelle: "Analyse des risques par poste / activité", famille: enregistrement}
+plan_actions:                     {libelle: "Plan d'action consolidé", famille: plan}
+registre_exigences_legales:       {libelle: "Registre des exigences légales et autres", famille: registre}
+procedure_veille_reglementaire:   {libelle: "Procédure de veille réglementaire", famille: procedure}
+planning_controles_reglementaires: {libelle: "Planning des contrôles réglementaires périodiques", famille: plan}
+objectifs_sst:                    {libelle: "Objectifs santé-sécurité", famille: plan}
+programme_sst:                    {libelle: "Programme de réalisation des objectifs", famille: programme}
+tableau_indicateurs:              {libelle: "Tableau de bord des indicateurs", famille: enregistrement}
+budget_sst:                       {libelle: "Budget SST", famille: enregistrement}
+matrice_competences:              {libelle: "Matrice des compétences", famille: liste}
+plan_formation:                   {libelle: "Plan de formation et attestations", famille: plan}
+livret_accueil:                   {libelle: "Livret / check-list d'accueil sécurité", famille: instruction}
+registre_habilitations:           {libelle: "Registre des habilitations et autorisations", famille: registre}
+dossier_medecine_travail:         {libelle: "Dossier médecine du travail (aptitudes, suivi)", famille: externe}
+support_sensibilisation:          {libelle: "Supports de sensibilisation", famille: instruction}
+registre_causeries:               {libelle: "Registre des causeries / quarts d'heure sécurité", famille: registre}
+procedure_communication:          {libelle: "Procédure de communication", famille: procedure}
+plan_communication:               {libelle: "Plan de communication SST", famille: plan}
+registre_communications_externes: {libelle: "Registre des communications externes", famille: registre}
+liste_documents:                  {libelle: "Liste des documents du système", famille: liste}
+procedure_maitrise_documentaire:  {libelle: "Procédure de maîtrise documentaire", famille: procedure}
+liste_documents_externes:         {libelle: "Liste des documents d'origine externe", famille: liste}
+fiche_donnees_securite:           {libelle: "Fiches de données de sécurité (FDS)", famille: externe}
+procedure_maitrise_operationnelle: {libelle: "Procédure de maîtrise opérationnelle", famille: procedure}
+instruction_travail:              {libelle: "Instruction de travail / mode opératoire", famille: instruction}
+permis_de_travail:                {libelle: "Permis de travail (feu, hauteur, confiné, consignation)", famille: enregistrement}
+checklist_prise_de_poste:         {libelle: "Check-list de prise de poste / d'engin", famille: enregistrement}
+plan_prevention:                  {libelle: "Plan de prévention (coactivité, sous-traitance)", famille: plan}
+protocole_securite:               {libelle: "Protocole de sécurité (chargement / déchargement, site partagé)", famille: plan}
+registre_epi:                     {libelle: "Tableau des EPI par poste", famille: liste}
+fiche_dotation_epi:               {libelle: "Fiche de dotation EPI", famille: enregistrement}
+procedure_gestion_changement:     {libelle: "Procédure de gestion du changement", famille: procedure}
+fiche_changement:                 {libelle: "Fiche d'analyse de changement", famille: enregistrement}
+procedure_achats:                 {libelle: "Procédure achats (volet SST)", famille: procedure}
+cahier_charges_sst:               {libelle: "Cahier des charges / clauses SST", famille: instruction}
+fiche_reception:                  {libelle: "Fiche de réception / mise en service", famille: enregistrement}
+procedure_sous_traitants:         {libelle: "Procédure de gestion des sous-traitants", famille: procedure}
+evaluation_sous_traitants:        {libelle: "Grille d'évaluation des sous-traitants", famille: enregistrement}
+liste_processus_externalises:     {libelle: "Liste des processus externalisés et maîtrise associée", famille: liste}
+contrat_externalisation:          {libelle: "Contrat / exigences transmises au prestataire", famille: externe}
+plan_urgence:                     {libelle: "Plan d'urgence par site", famille: plan}
+consignes_urgence:                {libelle: "Consignes d'urgence (affichées, remises)", famille: instruction}
+registre_exercices:               {libelle: "Registre des exercices d'urgence", famille: registre}
+rapport_exercice:                 {libelle: "Rapport d'exercice", famille: rapport}
+registre_verification_equipements: {libelle: "Registre de vérification des équipements", famille: registre}
+certificat_etalonnage:            {libelle: "Certificats d'étalonnage / vérification", famille: externe}
+procedure_surveillance_mesure:    {libelle: "Procédure de surveillance et mesure", famille: procedure}
+rapport_inspection:               {libelle: "Rapport d'inspection / ronde sécurité", famille: rapport}
+procedure_evaluation_conformite:  {libelle: "Procédure d'évaluation de la conformité", famille: procedure}
+rapport_evaluation_conformite:    {libelle: "Rapport d'évaluation de la conformité", famille: rapport}
+procedure_audit_interne:          {libelle: "Procédure d'audit interne", famille: procedure}
+programme_audit:                  {libelle: "Programme d'audit", famille: programme}
+plan_audit:                       {libelle: "Plan d'audit", famille: plan}
+rapport_audit:                    {libelle: "Rapport d'audit", famille: rapport}
+procedure_incident:               {libelle: "Procédure de déclaration et d'enquête des incidents", famille: procedure}
+rapport_enquete_incident:         {libelle: "Rapport d'enquête d'incident", famille: rapport}
+registre_accidents:               {libelle: "Registre des accidents et incidents", famille: registre}
+fiche_nc_action_corrective:       {libelle: "Fiche de non-conformité et d'action corrective", famille: enregistrement}
+registre_nc:                      {libelle: "Registre des non-conformités", famille: registre}
+tableau_amelioration:             {libelle: "Tableau de suivi de l'amélioration", famille: enregistrement}
+# --- réservés pour les modèles 9001 / 14001 / 50001 (apport 2), à compléter ---
+revue_energetique:                {libelle: "Revue énergétique (50001)", famille: enregistrement}
+situation_energetique_reference:  {libelle: "Situation énergétique de référence (50001)", famille: enregistrement}
+objectifs_energie:                {libelle: "Objectifs et cibles énergétiques (50001)", famille: plan}
+# --- ISO 9001 (apport 2) ---
+politique_qualite:                {libelle: "Politique qualité", famille: politique}
+objectifs_qualite:                {libelle: "Objectifs qualité", famille: plan}
+plan_maintenance:                 {libelle: "Plan de maintenance préventive et enregistrements", famille: plan}
+plan_controle:                    {libelle: "Plan de contrôle / plan qualité produit", famille: instruction}
+dossier_fabrication:              {libelle: "Dossier de fabrication ou de prestation (enregistrements de réalisation)", famille: enregistrement}
+registre_connaissances:           {libelle: "Référentiel des connaissances organisationnelles", famille: liste}
+procedure_communication_client:   {libelle: "Procédure de communication et de traitement des demandes clients", famille: procedure}
+fiche_reclamation_client:         {libelle: "Fiche / registre des réclamations clients", famille: enregistrement}
+cahier_charges_produit:           {libelle: "Cahier des charges / spécification produit ou prestation", famille: instruction}
+revue_contrat:                    {libelle: "Revue de contrat / de commande", famille: enregistrement}
+contrat_client:                   {libelle: "Contrat, commande ou avenant client", famille: externe}
+fiche_modification:               {libelle: "Fiche de modification (exigences, conception, production)", famille: enregistrement}
+procedure_conception:             {libelle: "Procédure de conception et développement", famille: procedure}
+dossier_conception:               {libelle: "Dossier de conception (entrées, sorties, revues, validation)", famille: enregistrement}
+evaluation_prestataires_externes: {libelle: "Grille et résultats d'évaluation des prestataires externes", famille: enregistrement}
+liste_prestataires_approuves:     {libelle: "Liste des prestataires approuvés", famille: liste}
+cahier_charges_achats:            {libelle: "Cahier des charges achats / conditions d'achat", famille: instruction}
+dossier_validation_procede:       {libelle: "Dossier de validation de procédé spécial", famille: enregistrement}
+procedure_tracabilite:            {libelle: "Procédure d'identification et de traçabilité", famille: procedure}
+fiche_suiveuse:                   {libelle: "Fiche suiveuse / ordre de fabrication", famille: enregistrement}
+registre_proprietes_client:       {libelle: "Registre des propriétés du client et des prestataires", famille: registre}
+procedure_preservation:           {libelle: "Procédure de préservation (stockage, conditionnement, transport)", famille: procedure}
+procedure_apres_vente:            {libelle: "Procédure des activités après livraison (garantie, SAV)", famille: procedure}
+fiche_liberation:                 {libelle: "Fiche de contrôle final et de libération", famille: enregistrement}
+fiche_derogation:                 {libelle: "Fiche de dérogation", famille: enregistrement}
+procedure_produit_non_conforme:   {libelle: "Procédure de maîtrise du produit non conforme", famille: procedure}
+registre_produits_non_conformes:  {libelle: "Registre des produits non conformes", famille: registre}
+enquete_satisfaction:             {libelle: "Enquête / mesure de satisfaction client", famille: enregistrement}
+# --- ISO 14001 (apport 2) ---
+politique_environnementale:       {libelle: "Politique environnementale", famille: politique}
+objectifs_environnementaux:       {libelle: "Objectifs environnementaux", famille: plan}
+programme_environnemental:        {libelle: "Programme environnemental", famille: programme}
+procedure_aspects_environnementaux: {libelle: "Procédure d'identification et d'évaluation des aspects environnementaux", famille: procedure}
+registre_aspects_impacts:         {libelle: "Registre des aspects et impacts environnementaux", famille: registre}
+autorisations_environnementales:  {libelle: "Autorisations et déclarations environnementales détenues", famille: externe}
+cahier_charges_env:               {libelle: "Critères environnementaux achats / conception", famille: instruction}
+fiche_cycle_de_vie:               {libelle: "Fiche d'information cycle de vie (usage, fin de vie) pour les clients", famille: instruction}
+registre_dechets:                 {libelle: "Registre des déchets (catégories, quantités, filières)", famille: registre}
+bordereau_suivi_dechets:          {libelle: "Bordereaux de suivi / attestations d'élimination des déchets", famille: externe}
+contrat_prestataire_dechets:      {libelle: "Contrats et autorisations des prestataires déchets", famille: externe}
+rapport_analyse_rejets:           {libelle: "Rapports d'analyses de rejets (eau, air, bruit)", famille: externe}
+bilan_consommations_rejets:       {libelle: "Bilan des consommations et des rejets", famille: enregistrement}
+# --- ISO 50001 (apport 2) ---
+politique_energetique:            {libelle: "Politique énergétique", famille: politique}
+lettre_mission_equipe_energie:    {libelle: "Lettre de mission de l'équipe de management de l'énergie", famille: politique}
+plan_actions_energie:             {libelle: "Plans d'action énergétiques", famille: plan}
+liste_usages_significatifs:       {libelle: "Liste des usages énergétiques significatifs", famille: liste}
+factures_energie:                 {libelle: "Factures d'énergie (12 mois minimum)", famille: externe}
+registre_compteurs:               {libelle: "Registre des compteurs et sous-compteurs", famille: registre}
+tableau_ipe:                      {libelle: "Tableau de bord des indicateurs de performance énergétique", famille: enregistrement}
+plan_collecte_donnees:            {libelle: "Plan de collecte des données énergétiques", famille: plan}
+consignes_exploitation_energie:   {libelle: "Consignes d'exploitation des usages significatifs", famille: instruction}
+fiche_conception_energie:         {libelle: "Fiche de prise en compte de l'énergie en conception", famille: enregistrement}
+criteres_achats_energie:          {libelle: "Critères énergétiques d'achat", famille: instruction}
+rapport_audit_energetique:        {libelle: "Rapport d'audit énergétique (réglementaire ou volontaire)", famille: externe}

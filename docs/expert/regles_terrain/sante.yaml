@@ -1,0 +1,247 @@
+# =====================================================================
+# RÉFÉRENTIEL TERRAIN — SANTÉ (cliniques, hôpitaux, cabinets, laboratoires)
+# Statut : BROUILLON v0.1 — à relire par Amine Boukha. Mêmes conventions
+# que industrie.yaml. Le regard porte sur la sécurité du PERSONNEL (45001) ;
+# les points d'hygiène des soins ne sont retenus que lorsqu'ils exposent
+# aussi les travailleurs.
+# =====================================================================
+secteur: sante
+version: "0.1-brouillon"
+regles:
+
+  - id: SAN-01
+    titre: Objets piquants, coupants et tranchants mal gérés
+    categorie: risque_biologique
+    description: >
+      Des aiguilles, lames ou autres objets souillés sont hors collecteur ou dans
+      un collecteur inutilisable, exposant le personnel à un accident d'exposition
+      au sang.
+    criticite_defaut: 4
+    exigences: [45001-6.1.2.1, 45001-8.1.1a, 45001-8.1.2a]
+    reference_reglementaire: "Décret 2-09-139 (déchets médicaux et pharmaceutiques) — à vérifier"
+    indices_visuels:
+      - "Aiguille, lame ou cathéter hors collecteur : plateau, poubelle ordinaire, lit, sol"
+      - "Collecteur rempli au-delà de la ligne de remplissage"
+      - "Collecteur ouvert, sans fermeture temporaire, à portée des patients"
+      - "Aiguille recapuchonnée à deux mains"
+      - "Absence de collecteur au point de soin ou sur le chariot de soins"
+    exclusions:
+      - "Collecteur en cours d'utilisation avec ouverture conforme et niveau sous la ligne"
+      - "Matériel neuf, sous emballage, disposé sur un plateau"
+    action_immediate: "Retirer l'objet avec pince ou gants adaptés, remplacer le collecteur, rappeler la conduite à tenir en cas d'AES"
+
+  - id: SAN-02
+    titre: Déchets médicaux et pharmaceutiques mal triés ou mal stockés
+    categorie: dechets
+    description: >
+      Les déchets à risque infectieux, chimique ou pharmaceutique ne sont pas triés,
+      conditionnés et stockés selon la filière prévue.
+    criticite_defaut: 3
+    exigences: [45001-6.1.3b, 45001-8.1.1a]
+    reference_reglementaire: "Loi 28-00 (gestion des déchets) ; décret 2-09-139 — à vérifier"
+    indices_visuels:
+      - "Déchets souillés (compresses sanglantes, tubulures) dans un sac de déchets ménagers"
+      - "Sacs de déchets à risque ouverts, débordants, posés au sol ou dans un couloir"
+      - "Local de stockage intermédiaire ouvert, non fermé à clé, ou sans réfrigération lorsqu'elle est exigée"
+      - "Conteneurs sans identification ni pictogramme"
+      - "Médicaments périmés ou cytotoxiques dans des déchets ordinaires"
+    exclusions:
+      - "Sac en cours de remplissage sur son support, couvercle fermé entre deux usages"
+      - "Collecte en cours par le prestataire agréé"
+    action_immediate: "Reconditionner dans la bonne filière, fermer le local, retirer les sacs des zones de passage"
+
+  - id: SAN-03
+    titre: Moyens d'hygiène des mains absents ou inutilisables
+    categorie: hygiene
+    description: >
+      Le personnel ne dispose pas des moyens de se désinfecter les mains au point
+      de soin, ou des pratiques réduisent l'efficacité de l'hygiène des mains.
+    criticite_defaut: 3
+    exigences: [45001-8.1.1a, 45001-8.1.2a]
+    reference_reglementaire: "Recommandations du ministère de la Santé (hygiène hospitalière) — à vérifier"
+    indices_visuels:
+      - "Distributeur de solution hydro-alcoolique absent ou vide au point de soin ou à l'entrée de chambre"
+      - "Lave-mains sans savon, sans essuie-mains à usage unique ou avec serviette en tissu"
+      - "Bijoux, montre, ongles longs ou faux ongles chez un soignant en soin"
+      - "Gants portés en dehors du soin (couloir, téléphone, clavier)"
+    exclusions:
+      - "Zone administrative ou d'accueil sans soin"
+      - "Distributeur en cours de remplacement, signalé"
+    action_immediate: "Réapprovisionner, rappeler les règles, retirer bijoux avant soin"
+
+  - id: SAN-04
+    titre: Gaz médicaux mal stockés ou manipulés
+    categorie: gaz
+    description: >
+      Des bouteilles d'oxygène ou d'autres gaz médicaux sont stockées ou utilisées
+      de façon à pouvoir tomber, fuir ou alimenter un incendie.
+    criticite_defaut: 4
+    exigences: [45001-8.1.1a, 45001-8.2a]
+    reference_reglementaire: "Textes relatifs aux appareils à pression et aux gaz médicaux — à vérifier"
+    indices_visuels:
+      - "Bouteille d'oxygène debout non arrimée ou couchée au sol dans un couloir"
+      - "Bouteille sans chapeau ou sans robinet protégé, hors utilisation"
+      - "Stockage de bouteilles avec des produits inflammables, des graisses ou des solvants"
+      - "Source de chaleur, flamme ou appareil de chauffage à proximité de l'oxygène"
+      - "Prise murale de fluides endommagée, tuyaux abîmés ou fuite audible / visible"
+    exclusions:
+      - "Bouteille fixée sur un support conçu (brancard, fauteuil, chariot d'urgence)"
+      - "Local de stockage dédié, fermé, ventilé et signalé"
+    action_immediate: "Arrimer ou ranger la bouteille, éloigner toute source de chaleur, signaler la fuite au service technique"
+
+  - id: SAN-05
+    titre: Produits chimiques et désinfectants non maîtrisés
+    categorie: chimique
+    description: >
+      Les désinfectants, détergents, réactifs ou produits d'entretien sont
+      stockés ou utilisés sans identification ni protection, parfois à portée des
+      patients.
+    criticite_defaut: 3
+    exigences: [45001-7.5.3b, 45001-8.1.1a]
+    reference_reglementaire: "Décret 2-12-431 (substances et préparations dangereuses) — à vérifier"
+    indices_visuels:
+      - "Flacon sans étiquette, ou produit transvasé dans un contenant alimentaire"
+      - "Désinfectants stockés avec des médicaments ou des aliments"
+      - "Produit laissé dans un couloir ou une chambre, accessible aux patients"
+      - "Préparation de solution (dilution) sans gants ni lunettes"
+      - "Absence de fiche de données de sécurité dans le local de stockage"
+    exclusions:
+      - "Chariot de ménage fermé avec produits étiquetés"
+      - "Armoire à produits fermée à clé, identifiée"
+    action_immediate: "Étiqueter ou éliminer, ranger sous clé, fournir les EPI de préparation"
+
+  - id: SAN-06
+    titre: Manutention de patients sans aide technique
+    categorie: ergonomie
+    description: >
+      Le personnel porte ou transfère des patients à bras, sans lève-personne ni
+      aide au transfert, dans des postures contraignantes.
+    criticite_defaut: 3
+    exigences: [45001-8.1.2a, 45001-6.1.2.1]
+    reference_reglementaire: "Code du travail (loi 65-99), Titre IV — à vérifier"
+    indices_visuels:
+      - "Patient porté à bras par une seule personne pour un transfert lit-fauteuil"
+      - "Absence de lève-personne, verticalisateur ou drap de glisse dans une unité de patients dépendants"
+      - "Lit non réglé en hauteur pour le soin, soignant très penché"
+      - "Torsion du tronc sous charge, patient soulevé par les aisselles"
+    exclusions:
+      - "Patient autonome simplement accompagné, non porté"
+      - "Aide technique visible et utilisée (lève-personne, planche de transfert)"
+    action_immediate: "Interrompre le transfert à risque, utiliser l'aide technique ou faire appel à un collègue"
+
+  - id: SAN-07
+    titre: Sols, circulations et obstacles
+    categorie: circulation
+    description: >
+      Les couloirs et locaux présentent des risques de chute ou de heurt pour le
+      personnel qui circule vite, souvent avec du matériel.
+    criticite_defaut: 2
+    exigences: [45001-9.1.1a, 45001-8.1.1a]
+    reference_reglementaire: "Code du travail (loi 65-99), Titre IV — à vérifier"
+    indices_visuels:
+      - "Sol mouillé sans panneau de signalisation"
+      - "Câbles d'appareils au sol dans un couloir ou une chambre"
+      - "Chariots, lits ou fauteuils encombrant un couloir ou stationnés devant une porte"
+      - "Éclairage défaillant dans un escalier ou un couloir"
+      - "Revêtement de sol décollé, tapis non fixé"
+    exclusions:
+      - "Nettoyage en cours signalé"
+      - "Matériel rangé sur un seul côté d'un couloir large, sans réduire le passage utile"
+    action_immediate: "Signaler la zone glissante, dégager le passage, fixer ou retirer le câble"
+
+  - id: SAN-08
+    titre: Évacuation et sécurité incendie
+    categorie: evacuation
+    description: >
+      Les conditions d'évacuation d'un établissement accueillant des personnes peu
+      mobiles sont dégradées.
+    criticite_defaut: 4
+    exigences: [45001-8.2a, 45001-8.2b]
+    reference_reglementaire: "Règlement général de construction — sécurité incendie (décret 2-14-499) — à vérifier"
+    indices_visuels:
+      - "Issue de secours verrouillée ou encombrée par des lits, fauteuils, cartons"
+      - "Porte coupe-feu calée en position ouverte"
+      - "Extincteur masqué, absent ou périmé"
+      - "Plan d'évacuation absent ou consignes non affichées à l'étage"
+      - "Oxygène ou produits inflammables près d'une source de chaleur"
+    exclusions:
+      - "Porte maintenue ouverte par une ventouse asservie à l'alarme incendie"
+      - "Obstruction temporaire pendant un transfert de patient, personnel présent"
+    action_immediate: "Dégager et déverrouiller les issues, retirer la cale, signaler l'extincteur défaillant"
+
+  - id: SAN-09
+    titre: Électricité et dispositifs médicaux
+    categorie: electricite
+    description: >
+      Le matériel électrique ou biomédical présente un risque électrique ou n'est
+      pas maintenu.
+    criticite_defaut: 3
+    exigences: [45001-6.1.3b, 45001-9.1.1b]
+    reference_reglementaire: "Textes relatifs aux installations électriques ; réglementation des dispositifs médicaux — à vérifier"
+    indices_visuels:
+      - "Multiprises en cascade sous un lit ou derrière un moniteur"
+      - "Câble d'appareil endommagé, dénudé ou réparé au ruban adhésif"
+      - "Dispositif médical sans étiquette de maintenance, ou date de contrôle dépassée"
+      - "Prise ou interrupteur cassé dans une chambre ou une salle de soins"
+      - "Appareil électrique posé en zone humide sans protection"
+    exclusions:
+      - "Rallonge médicale homologuée fixée sur un support"
+      - "Étiquette de maintenance illisible sur l'image : signaler « à vérifier », pas une NC"
+    action_immediate: "Mettre hors service le matériel défectueux, le signaler au service biomédical"
+
+  - id: SAN-10
+    titre: Circuit du linge et séparation propre / sale
+    categorie: hygiene
+    description: >
+      Le linge souillé et le linge propre se croisent ou sont stockés dans des
+      conditions qui exposent le personnel.
+    criticite_defaut: 2
+    exigences: [45001-8.1.1a]
+    reference_reglementaire: "Recommandations d'hygiène hospitalière — à vérifier"
+    indices_visuels:
+      - "Linge souillé au sol ou dans des sacs ouverts"
+      - "Linge propre et linge sale dans le même local ou sur le même chariot non compartimenté"
+      - "Sacs de linge sale stockés dans un couloir de circulation"
+    exclusions:
+      - "Chariot compartimenté propre / sale, fermé"
+      - "Local à linge sale fermé, sacs fermés"
+    action_immediate: "Fermer les sacs, séparer les circuits, retirer le linge des zones de passage"
+
+  - id: SAN-11
+    titre: Précautions complémentaires non visibles
+    categorie: risque_biologique
+    description: >
+      Une chambre en isolement ne signale pas les précautions à prendre, ou les
+      EPI nécessaires ne sont pas disponibles à l'entrée.
+    criticite_defaut: 3
+    exigences: [45001-8.1.2b, 45001-7.3]
+    reference_reglementaire: "Recommandations d'hygiène hospitalière — à vérifier"
+    indices_visuels:
+      - "Chambre d'isolement sans signalétique à la porte"
+      - "Blouses, masques ou gants absents à l'entrée ou dans le sas"
+      - "Porte ouverte pour un isolement de type aérien"
+      - "Poubelle de tri absente dans le sas de sortie"
+    exclusions:
+      - "Signalétique présente mais hors champ : ne pas conclure sans vue de la porte"
+      - "Isolement protecteur (patient fragile) sans exigence de porte fermée"
+    action_immediate: "Apposer la signalétique, approvisionner les EPI, fermer la porte si exigé"
+
+  - id: SAN-12
+    titre: Radioprotection
+    categorie: rayonnements
+    description: >
+      Une zone exposant à des rayonnements ionisants n'est pas signalée ou le
+      personnel n'est pas protégé lors de l'exposition.
+    criticite_defaut: 4
+    exigences: [45001-7.2b, 45001-8.1.2a, 45001-6.1.3b]
+    reference_reglementaire: "Loi 142-12 (sûreté et sécurité nucléaires et radiologiques, AMSSNuR) — à vérifier"
+    indices_visuels:
+      - "Signalisation de zone (trèfle) absente à l'entrée d'une salle de radiologie ou de scanner"
+      - "Voyant d'émission absent ou non fonctionnel"
+      - "Personnel sans tablier plombé ni protège-thyroïde lors d'une exposition au bloc ou en radiologie interventionnelle"
+      - "Dosimètre non porté par le personnel exposé"
+      - "Porte de la salle ouverte pendant l'émission"
+    exclusions:
+      - "Personnel derrière le paravent plombé ou hors de la salle pendant l'émission"
+      - "Salle hors fonctionnement, signalée"
+    action_immediate: "Interrompre l'exposition, équiper le personnel, rétablir la signalisation, informer la personne compétente en radioprotection"

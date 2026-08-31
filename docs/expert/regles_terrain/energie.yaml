@@ -1,0 +1,241 @@
+# =====================================================================
+# RÉFÉRENTIEL TERRAIN — ÉNERGIE (transverse, tous secteurs)
+# Statut : BROUILLON v0.1 — à relire par Amine et à faire valider par un
+# auditeur énergie. Étend le service 3 à ISO 50001 : détection de gaspillages
+# et de dérives d'exploitation visibles sur image ou caméra.
+# criticite_defaut : ici, mesure l'ampleur du gaspillage ou du risque de
+#   dérive (4 = perte majeure ou danger associé, 3 = perte importante,
+#   2 = perte courante, 1 = observation). Le moteur escalade si l'anomalie est
+#   observée de façon répétée sur caméra (ESC-02).
+# =====================================================================
+secteur: transverse_energie
+version: "0.1-brouillon"
+regles:
+
+  - id: ENE-01
+    titre: Fuites d'air comprimé
+    categorie: air_comprime
+    description: >
+      Le réseau d'air comprimé fuit (raccords, flexibles, vannes, soufflettes),
+      ce qui fait tourner les compresseurs à vide et représente souvent 20 à 30 %
+      de la consommation du poste.
+    criticite_defaut: 2
+    exigences: [50001-8.1, 50001-6.3b]
+    reference_reglementaire: ""
+    indices_visuels:
+      - "Flexible fendu, raccord rapide fuyard, ruban adhésif sur un tuyau d'air"
+      - "Soufflette ouverte ou abandonnée en pression, purge automatique bloquée ouverte"
+      - "Compresseur en charge alors que l'atelier est à l'arrêt (caméra hors production)"
+      - "Sifflement signalé par l'opérateur lors de la prise de vue"
+    exclusions:
+      - "Purge de condensats automatique fonctionnant par intermittence"
+      - "Réseau consigné et dépressurisé pour maintenance"
+    action_immediate: "Repérer et réparer les fuites, isoler les tronçons inutilisés, couper le compresseur hors production"
+
+  - id: ENE-02
+    titre: Éclairage inutile ou inefficace
+    categorie: eclairage
+    description: >
+      Des locaux inoccupés restent éclairés, l'éclairage fonctionne en plein
+      jour, ou les luminaires sont d'une technologie énergivore.
+    criticite_defaut: 1
+    exigences: [50001-6.3c, 50001-7.3]
+    reference_reglementaire: ""
+    indices_visuels:
+      - "Local vide éclairé (bureaux le soir, entrepôt sans activité, sanitaires)"
+      - "Éclairage artificiel allumé à côté de baies vitrées en plein jour"
+      - "Tubes fluorescents, halogènes ou lampes à vapeur de mercure dans un grand volume"
+      - "Luminaires encrassés ou masqués par du stockage"
+    exclusions:
+      - "Zone de sécurité ou de surveillance devant rester éclairée"
+      - "Éclairage de sécurité réglementaire"
+    action_immediate: "Éteindre, installer détecteurs de présence et horloges, planifier le passage aux LED"
+
+  - id: ENE-03
+    titre: Portes et ouvertures des zones climatisées ou réfrigérées ouvertes
+    categorie: froid_climatisation
+    description: >
+      Les portes de chambres froides, d'ateliers chauffés ou climatisés, ou de
+      quais restent ouvertes, provoquant des pertes thermiques et du givre.
+    criticite_defaut: 2
+    exigences: [50001-8.1, 50001-6.3b]
+    reference_reglementaire: ""
+    indices_visuels:
+      - "Porte de chambre froide ouverte sans opérateur, rideau à lanières absent ou déchiré"
+      - "Porte de quai ouverte sans camion, atelier chauffé porte grande ouverte en hiver"
+      - "Givre épais sur les évaporateurs ou les cadres de porte"
+      - "Fenêtres ouvertes dans un local climatisé"
+    exclusions:
+      - "Chargement ou déchargement en cours"
+      - "Porte automatique en cycle"
+    action_immediate: "Fermer, réparer les rideaux et fermetures automatiques, dégivrer"
+
+  - id: ENE-04
+    titre: Équipements en marche à vide
+    categorie: exploitation
+    description: >
+      Des équipements consommateurs fonctionnent sans production : convoyeurs,
+      compresseurs, pompes, fours ou étuves préchauffés, ventilation, machines
+      en attente.
+    criticite_defaut: 2
+    exigences: [50001-8.1, 50001-6.3b]
+    reference_reglementaire: ""
+    indices_visuels:
+      - "Convoyeur ou ligne en marche sans produit"
+      - "Four, étuve ou friteuse en chauffe longtemps avant ou après la production"
+      - "Ventilateurs, extracteurs ou pompes en marche dans une zone à l'arrêt"
+      - "Machines-outils sous tension avec hydraulique en marche pendant les pauses"
+    exclusions:
+      - "Préchauffage nécessaire au procédé, dans la durée prévue par la consigne"
+      - "Équipement devant rester en marche pour la sécurité (extraction de gaz, ventilation de local de charge)"
+    action_immediate: "Arrêter, installer des arrêts automatiques ou des modes veille, ajuster les consignes de démarrage"
+
+  - id: ENE-05
+    titre: Isolation thermique absente ou dégradée
+    categorie: thermique
+    description: >
+      Des tuyauteries, vannes, brides, réservoirs ou fours chauds ou froids sont
+      nus ou mal isolés, avec pertes permanentes.
+    criticite_defaut: 2
+    exigences: [50001-6.3c, 50001-8.1]
+    reference_reglementaire: ""
+    indices_visuels:
+      - "Tuyauterie de vapeur, d'eau chaude ou de fluide frigorigène sans calorifuge"
+      - "Vannes et brides nues sur un réseau calorifugé, calorifuge tombé ou mouillé"
+      - "Parois de four ou de chaudière décolorées, peinture cloquée (chaleur rayonnée)"
+      - "Condensation ou givre sur une tuyauterie froide non isolée"
+    exclusions:
+      - "Tronçons courts prévus non isolés pour la maintenance, identifiés"
+      - "Calorifuge en cours de réfection, chantier balisé"
+    action_immediate: "Programmer l'isolation ; mesurer la température de surface pour chiffrer la perte"
+
+  - id: ENE-06
+    titre: Fuites de vapeur, d'eau chaude ou purgeurs défaillants
+    categorie: thermique
+    description: >
+      Le réseau de vapeur ou d'eau chaude perd de l'énergie par des fuites,
+      des purgeurs bloqués ou des évents permanents.
+    criticite_defaut: 3
+    exigences: [50001-8.1, 50001-6.3b]
+    reference_reglementaire: ""
+    indices_visuels:
+      - "Panache de vapeur permanent à un raccord, une vanne, un évent ou un purgeur"
+      - "Goutte à goutte d'eau chaude, traces de calcaire sous une fuite"
+      - "Purgeur soufflant en continu, bâche alimentaire fumante"
+    exclusions:
+      - "Évent de dégazage fonctionnant par intermittence"
+      - "Purge de démarrage en cours"
+    action_immediate: "Réparer, vérifier les purgeurs, récupérer les condensats"
+
+  - id: ENE-07
+    titre: Combustion dégradée sur chaudière, four ou groupe
+    categorie: combustion
+    description: >
+      Un équipement de combustion présente des signes de mauvais réglage ou
+      d'entretien insuffisant.
+    criticite_defaut: 3
+    exigences: [50001-8.1, 50001-6.3b, 14001-6.1.2a]
+    reference_reglementaire: "Textes sur les appareils à pression et le contrôle des combustions — à vérifier"
+    indices_visuels:
+      - "Fumées noires ou grises en sortie de cheminée"
+      - "Flamme jaune et instable dans un brûleur gaz, suie autour du foyer"
+      - "Absence d'étiquette ou de rapport d'entretien et de réglage récent"
+      - "Corps de chaudière très chaud au toucher ou décoloré, fuites de gaz de combustion"
+    exclusions:
+      - "Démarrage à froid pendant quelques minutes"
+      - "Équipement hors service signalé"
+    action_immediate: "Faire régler la combustion, analyser les fumées, nettoyer les échangeurs"
+
+  - id: ENE-08
+    titre: Consignes de température et régulation aberrantes
+    categorie: froid_climatisation
+    description: >
+      Le chauffage et la climatisation fonctionnent en même temps, les consignes
+      sont extrêmes, ou la régulation est contournée.
+    criticite_defaut: 2
+    exigences: [50001-8.1, 50001-7.3]
+    reference_reglementaire: ""
+    indices_visuels:
+      - "Thermostat réglé très bas en été ou très haut en hiver, unité intérieure en mode contradictoire avec la saison"
+      - "Chauffage d'appoint électrique dans un local climatisé"
+      - "Thermostat forcé, sonde masquée ou capot de régulation ouvert avec pontage"
+      - "Fenêtre ou porte ouverte avec climatisation en marche"
+    exclusions:
+      - "Locaux à consigne process (salle serveurs, chambre froide, laboratoire) avec consigne affichée"
+      - "Test de régulation en cours par la maintenance"
+    action_immediate: "Rétablir les consignes, verrouiller les régulateurs, retirer les appoints"
+
+  - id: ENE-09
+    titre: Régulation par étranglement ou surdimensionnement visible
+    categorie: moteurs
+    description: >
+      Des pompes, ventilateurs ou compresseurs sont régulés par vanne
+      d'étranglement, by-pass ou registre au lieu d'une variation de vitesse, ou
+      fonctionnent manifestement au-delà du besoin.
+    criticite_defaut: 2
+    exigences: [50001-6.3c, 50001-8.2]
+    reference_reglementaire: ""
+    indices_visuels:
+      - "Vanne de refoulement partiellement fermée en permanence sur une pompe"
+      - "Registre ou volet de ventilation bridé, by-pass ouvert"
+      - "Moteur récent sans variateur sur un usage à charge variable"
+      - "Plusieurs compresseurs en marche simultanément sans gestion de cascade"
+    exclusions:
+      - "Vanne de réglage prévue par le procédé, avec point de consigne documenté"
+      - "Équipement de secours en essai"
+    action_immediate: "Étudier la variation de vitesse et la cascade ; ajuster les points de fonctionnement"
+
+  - id: ENE-10
+    titre: Comptage absent ou inexploitable sur les usages significatifs
+    categorie: mesure
+    description: >
+      Les usages énergétiques importants ne disposent pas de compteur ou de
+      sous-compteur lisible, ce qui empêche toute revue énergétique fiable.
+    criticite_defaut: 2
+    exigences: [50001-6.6, 50001-6.3a]
+    reference_reglementaire: ""
+    indices_visuels:
+      - "Armoire d'un usage majeur (froid, air comprimé, four) sans compteur dédié"
+      - "Compteur illisible, cadran cassé, inaccessible ou masqué"
+      - "Compteur présent mais aucun relevé récent visible sur la fiche à côté"
+    exclusions:
+      - "Comptage centralisé par supervision, signalé sur place"
+      - "Usage mineur ne justifiant pas de sous-comptage"
+    action_immediate: "Installer un sous-compteur, rendre le compteur lisible, organiser les relevés"
+
+  - id: ENE-11
+    titre: Échangeurs, filtres et condenseurs encrassés ou mal placés
+    categorie: froid_climatisation
+    description: >
+      Les équipements thermiques perdent en rendement par encrassement, givre,
+      ou exposition inadaptée.
+    criticite_defaut: 2
+    exigences: [50001-8.1, 50001-6.3c]
+    reference_reglementaire: ""
+    indices_visuels:
+      - "Filtres de centrale d'air ou de climatiseur noirs de poussière"
+      - "Ailettes de condenseur écrasées ou colmatées, condenseur en plein soleil ou contre un mur sans ventilation"
+      - "Givre épais sur un évaporateur, batterie de chambre froide encroûtée"
+      - "Tour de refroidissement entartrée"
+    exclusions:
+      - "Nettoyage en cours ou étiquette d'entretien récente"
+      - "Givre léger normal entre deux cycles de dégivrage"
+    action_immediate: "Nettoyer, dégivrer, ombrager ou déplacer le condenseur, inscrire au plan de maintenance"
+
+  - id: ENE-12
+    titre: Véhicules et engins moteur tournant à l'arrêt
+    categorie: carburant
+    description: >
+      Des véhicules ou engins tournent au ralenti sans activité, ou présentent
+      des signes de mauvais entretien augmentant la consommation.
+    criticite_defaut: 1
+    exigences: [50001-7.3, 50001-8.1]
+    reference_reglementaire: ""
+    indices_visuels:
+      - "Camion ou engin moteur en marche, cabine vide ou conducteur en pause"
+      - "Fumée d'échappement noire ou bleue"
+      - "Pneus visiblement sous-gonflés sur un engin de manutention thermique"
+    exclusions:
+      - "Moteur nécessaire au fonctionnement d'un équipement (groupe frigorifique, grue, pompe)"
+      - "Démarrage à froid en hiver pendant quelques minutes"
+    action_immediate: "Couper le moteur, rappeler la consigne, planifier l'entretien"

@@ -1,0 +1,595 @@
+# =====================================================================
+# MODÈLE D'EXIGENCES ISO 50001 — EXIGENCES SPÉCIFIQUES ET NUANCES
+# Statut : BROUILLON v0.1 — rédigé par l'assistant IA. À RELIRE par Amine ET
+#          À FAIRE VALIDER par un auditeur énergie qualifié avant mise en
+#          production (voir document Apports §3 : le nom du validateur sera
+#          affiché). Mêmes conventions que 45001 ; champ optionnel `nuance_de`.
+# Règles terrain associées : regles_terrain/energie.yaml (ENE-xx).
+# Prérequis de génération : sans douze mois de données de consommation
+#          (formulaire Q62-Q65), l'agent refuse de générer la revue énergétique.
+# =====================================================================
+
+- id: 50001-4.3
+  chapitre: 4
+  titre_fr: Domaine d'application et périmètre énergétique
+  titre_en: Scope and energy boundaries
+  exigence_fr: >
+    Le domaine d'application et le périmètre physique du système énergétique
+    sont définis : sites, bâtiments, procédés, équipements et sources d'énergie
+    inclus, limites organisationnelles et physiques ; aucune source ni aucun
+    usage important n'est exclu, et l'organisme a l'autorité de maîtriser
+    l'efficacité, les usages et la consommation d'énergie dans ce périmètre.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Déclaration de domaine et de périmètre listant les sources d'énergie"
+    - "Plan ou schéma des limites physiques"
+    - "Justification des exclusions"
+  questions_audit:
+    - "Quelles sources d'énergie sont dans le périmètre ?"
+    - "Le parc de véhicules est-il inclus, et pourquoi ?"
+  documents_types: [declaration_domaine_application]
+  hls_commun: oui
+  equivalences: [45001-4.3, 9001-4.3, 14001-4.3]
+  nuance_de: 45001-4.3
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Sources secondaires oubliées (gaz, carburants, vapeur achetée) ; bâtiments
+    loués exclus sans justification.
+  poids: 2
+
+- id: 50001-5.1
+  chapitre: 5
+  titre_fr: Leadership et équipe de management de l'énergie
+  titre_en: Leadership and energy management team
+  exigence_fr: >
+    La direction s'engage sur l'amélioration continue de la performance
+    énergétique : elle constitue une équipe de management de l'énergie avec les
+    compétences et l'autorité nécessaires, fournit les ressources, intègre
+    l'énergie dans les décisions d'investissement et de planification à long
+    terme, veille à ce que les indicateurs de performance énergétique reflètent la
+    réalité, et communique l'importance du management de l'énergie.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Lettre de mission de l'équipe énergie (membres, temps, autorité)"
+    - "Décisions d'investissement prises sur des critères énergétiques"
+    - "Ordre du jour et PV de direction"
+  questions_audit:
+    - "Qui fait partie de l'équipe énergie, et quel temps y consacre-t-elle ?"
+    - "Quel investissement a été décidé sur un critère énergétique ?"
+  documents_types: [lettre_mission_equipe_energie, pv_comite_direction]
+  hls_commun: oui
+  equivalences: [45001-5.1a, 9001-5.1.1, 14001-5.1]
+  nuance_de: 45001-5.1a
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Équipe énergie réduite au responsable maintenance ; énergie absente des
+    décisions d'achat ; aucun temps alloué.
+  poids: 3
+
+- id: 50001-5.2
+  chapitre: 5
+  titre_fr: Politique énergétique
+  titre_en: Energy policy
+  exigence_fr: >
+    La politique énergétique engage à améliorer en continu la performance
+    énergétique et le système, à mettre à disposition les informations et les
+    ressources nécessaires pour atteindre les objectifs et cibles, à respecter
+    les obligations de conformité liées à l'énergie, et à soutenir l'achat de
+    produits et services efficaces et la conception intégrant la performance
+    énergétique ; elle est signée, diffusée et comprise.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Politique signée et datée"
+    - "Preuves de diffusion et compréhension"
+    - "Cohérence avec objectifs, achats et conception"
+  questions_audit:
+    - "Comment l'engagement sur les achats se traduit-il dans vos cahiers des charges ?"
+  documents_types: [politique_energetique]
+  hls_commun: oui
+  equivalences: [45001-5.2, 9001-5.2, 14001-5.2]
+  nuance_de: 45001-5.2
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Engagements sur les achats et la conception absents ; politique connue de
+    personne.
+  poids: 3
+
+- id: 50001-5.3
+  chapitre: 5
+  titre_fr: Rôles et responsabilités énergétiques
+  titre_en: Energy roles and responsibilities
+  exigence_fr: >
+    Les responsabilités du système énergétique sont attribuées : équipe énergie
+    chargée de faire fonctionner le système et de rendre compte, responsables de
+    la collecte et de l'analyse des données, exploitants des usages significatifs,
+    personnes chargées des achats et de la conception ; ces rôles sont écrits,
+    communiqués et connus des intéressés.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Matrice de responsabilités énergie"
+    - "Fiches de poste des exploitants et de l'équipe énergie"
+  questions_audit:
+    - "Qui relève les compteurs, et qui analyse les données ?"
+  documents_types: [matrice_responsabilites, lettre_mission_equipe_energie]
+  hls_commun: oui
+  equivalences: [45001-5.3, 9001-5.3, 14001-5.3]
+  nuance_de: 45001-5.3
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Responsabilités concentrées sur une personne ; collecte des données sans
+    responsable.
+  poids: 2
+
+- id: 50001-6.2
+  chapitre: 6
+  titre_fr: Objectifs, cibles énergétiques et plans d'action
+  titre_en: Energy objectives, targets and action plans
+  exigence_fr: >
+    Des objectifs et des cibles énergétiques sont fixés, cohérents avec la
+    politique, mesurables, tenant compte des usages significatifs, des
+    opportunités identifiées lors de la revue énergétique et des obligations ;
+    pour chacun, un plan d'action précise les actions, ressources, responsables,
+    échéances, la méthode de vérification des résultats et la méthode de
+    vérification de l'amélioration de la performance ; les plans sont suivis et
+    mis à jour.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Objectifs et cibles chiffrés reliés aux usages significatifs"
+    - "Plans d'action avec méthode de vérification des économies"
+    - "Suivi périodique"
+  questions_audit:
+    - "Quelle cible chiffrée avez-vous sur votre principal usage, et comment vérifierez-vous l'économie réalisée ?"
+  documents_types: [objectifs_energie, plan_actions_energie]
+  hls_commun: oui
+  equivalences: [45001-6.2.1, 45001-6.2.2, 14001-6.2]
+  nuance_de: 45001-6.2.1
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Objectifs sans cible chiffrée ; méthode de vérification des économies absente ;
+    actions sans lien avec les usages significatifs.
+  poids: 3
+
+- id: 50001-6.3a
+  chapitre: 6
+  titre_fr: Revue énergétique — analyse des usages et consommations
+  titre_en: Energy review — analysis of uses and consumption
+  exigence_fr: >
+    L'organisme a réalisé et tient à jour une revue énergétique fondée sur des
+    données mesurées : identification des sources d'énergie, évaluation des
+    usages et des consommations passées et présentes par source, par bâtiment,
+    procédé ou équipement, avec les variables qui les influencent (production,
+    météo, occupation, horaires) ; la méthode et les critères sont définis, la
+    revue est mise à jour à intervalles définis et après tout changement majeur.
+  exigence_en: ""
+  type: enregistrement
+  preuves_attendues:
+    - "Revue énergétique datée avec méthode"
+    - "Bilan des consommations sur au moins douze mois, par source"
+    - "Répartition par usage ; variables d'influence identifiées"
+  questions_audit:
+    - "Quelle part de votre consommation représente votre plus gros usage, et sur quelles données ?"
+    - "Quand la revue a-t-elle été mise à jour, et pourquoi ?"
+  documents_types: [revue_energetique, factures_energie, registre_compteurs]
+  hls_commun: non
+  equivalences: []
+  applicabilite: tous
+  regles_terrain: [ENE-10]
+  erreurs_frequentes: >
+    Revue fondée sur des estimations sans mesure ; répartition par usage
+    absente ; revue faite une fois.
+  poids: 3
+
+- id: 50001-6.3b
+  chapitre: 6
+  titre_fr: Usages énergétiques significatifs
+  titre_en: Significant energy uses
+  exigence_fr: >
+    À partir de l'analyse, l'organisme identifie ses usages énergétiques
+    significatifs avec des critères définis (part de la consommation, potentiel
+    d'amélioration) et, pour chacun : les variables pertinentes, la performance
+    énergétique actuelle, et les personnes dont le travail influence l'usage
+    (opérateurs, maintenance, prestataires). Cette liste est mise à jour et sert
+    de base à la maîtrise opérationnelle, aux compétences et à la surveillance.
+  exigence_en: ""
+  type: enregistrement
+  preuves_attendues:
+    - "Liste des usages significatifs avec critères, variables, performance actuelle, personnes"
+    - "Lien avec procédures d'exploitation et formations"
+  questions_audit:
+    - "Quels sont vos usages significatifs, et qui les exploite ?"
+    - "Quelle variable explique les variations de votre consommation de froid ?"
+  documents_types: [liste_usages_significatifs, revue_energetique]
+  hls_commun: non
+  equivalences: []
+  applicabilite: tous
+  regles_terrain: [ENE-01, ENE-03, ENE-04, ENE-07]
+  erreurs_frequentes: >
+    Usages définis trop largement (« l'électricité ») ; variables non
+    identifiées ; personnes concernées inconnues.
+  poids: 3
+
+- id: 50001-6.3c
+  chapitre: 6
+  titre_fr: Opportunités d'amélioration et consommations futures
+  titre_en: Improvement opportunities and future consumption
+  exigence_fr: >
+    La revue énergétique identifie et hiérarchise les opportunités
+    d'amélioration de la performance (réglages, maintenance, remplacement
+    d'équipements, changement de pratiques, énergies renouvelables) avec une
+    estimation des gains et des coûts, et estime les usages et consommations
+    futurs en tenant compte des projets et des évolutions d'activité ; ces
+    éléments alimentent les objectifs et les plans d'action.
+  exigence_en: ""
+  type: enregistrement
+  preuves_attendues:
+    - "Liste des opportunités hiérarchisées avec gains et coûts estimés"
+    - "Projection des consommations"
+    - "Lien avec objectifs et plans d'action"
+  questions_audit:
+    - "Quelles sont vos trois premières opportunités, et pourquoi n'ont-elles pas encore été mises en œuvre ?"
+  documents_types: [revue_energetique, plan_actions_energie]
+  hls_commun: non
+  equivalences: [45001-6.1.2.3]
+  applicabilite: tous
+  regles_terrain: [ENE-02, ENE-05, ENE-09, ENE-11]
+  erreurs_frequentes: >
+    Opportunités listées sans chiffrage ; projection absente ; opportunités
+    jamais revues.
+  poids: 2
+
+- id: 50001-6.4
+  chapitre: 6
+  titre_fr: Indicateurs de performance énergétique
+  titre_en: Energy performance indicators
+  exigence_fr: >
+    L'organisme a défini des indicateurs de performance énergétique adaptés pour
+    mesurer et suivre sa performance et démontrer son amélioration : pour chaque
+    usage significatif et pour l'ensemble, une méthode de calcul écrite, la prise
+    en compte des variables pertinentes (normalisation), la comparaison avec la
+    situation de référence, et une révision quand la méthode ne représente plus
+    la réalité ; les valeurs sont enregistrées.
+  exigence_en: ""
+  type: enregistrement
+  preuves_attendues:
+    - "Fiche de définition de chaque indicateur : formule, données, variables, fréquence"
+    - "Tableau de suivi comparé à la référence"
+  questions_audit:
+    - "Quel est votre indicateur principal, et comment tenez-vous compte de la production ou de la météo ?"
+  documents_types: [tableau_ipe, situation_energetique_reference]
+  hls_commun: non
+  equivalences: [45001-9.1.1a]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    kWh bruts sans normalisation ; indicateur non relié aux usages significatifs ;
+    méthode non écrite.
+  poids: 3
+
+- id: 50001-6.5
+  chapitre: 6
+  titre_fr: Situation énergétique de référence
+  titre_en: Energy baseline
+  exigence_fr: >
+    Une situation énergétique de référence est établie à partir de la revue
+    énergétique sur une période représentative, avec les données et variables
+    retenues, pour chaque indicateur ; elle sert de base à la mesure de
+    l'amélioration ; elle est ajustée quand la méthode le prévoit (changement
+    majeur des procédés, des bâtiments ou des variables, indicateur ne
+    reflétant plus la performance) et les données sont conservées.
+  exigence_en: ""
+  type: enregistrement
+  preuves_attendues:
+    - "Situation de référence documentée : période, données, variables, méthode"
+    - "Règles d'ajustement et historique des ajustements"
+  questions_audit:
+    - "Sur quelle période est établie votre référence, et pourquoi ?"
+    - "L'avez-vous ajustée depuis, et pour quelle raison ?"
+  documents_types: [situation_energetique_reference, revue_energetique]
+  hls_commun: non
+  equivalences: []
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Référence sur une période non représentative ; ajustements non documentés ;
+    référence jamais comparée.
+  poids: 3
+
+- id: 50001-6.6
+  chapitre: 6
+  titre_fr: Plan de collecte des données énergétiques
+  titre_en: Energy data collection plan
+  exigence_fr: >
+    Un plan définit les données nécessaires au suivi : variables pertinentes des
+    usages significatifs, consommations par source et par usage, données
+    d'exploitation liées aux usages significatifs, facteurs statiques, données
+    des plans d'action ; il précise comment, à quelle fréquence et par qui elles
+    sont collectées, et la précision des instruments de mesure (compteurs,
+    sous-compteurs, sondes) qui sont étalonnés ou vérifiés.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Plan de collecte"
+    - "Liste des compteurs et sous-compteurs avec périodicité de vérification"
+    - "Relevés effectués selon le plan"
+  questions_audit:
+    - "Quelles données collectez-vous chaque mois, par qui, et où sont-elles saisies ?"
+    - "Vos sous-compteurs sont-ils vérifiés ?"
+  documents_types: [plan_collecte_donnees, registre_compteurs, registre_verification_equipements]
+  hls_commun: non
+  equivalences: [45001-9.1.1b]
+  applicabilite: tous
+  regles_terrain: [ENE-10]
+  erreurs_frequentes: >
+    Données limitées aux factures ; sous-compteurs absents sur les usages
+    significatifs ; relevés irréguliers.
+  poids: 3
+
+- id: 50001-7.2
+  chapitre: 7
+  titre_fr: Compétences influant sur la performance énergétique
+  titre_en: Competence affecting energy performance
+  exigence_fr: >
+    Les personnes dont le travail influence la performance énergétique —
+    exploitants des usages significatifs, maintenance, acheteurs, concepteurs,
+    équipe énergie — sont compétentes : besoins définis, formations ou
+    accompagnements réalisés et évalués, preuves conservées.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Matrice de compétences énergie"
+    - "Formations : conduite d'installations, réglages, analyse de données"
+  questions_audit:
+    - "Qui sait régler la chaudière ou le compresseur, et comment a-t-il été formé ?"
+  documents_types: [matrice_competences, plan_formation]
+  hls_commun: oui
+  equivalences: [45001-7.2a, 9001-7.2, 14001-7.2]
+  nuance_de: 45001-7.2a
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Exploitants non formés aux réglages économes ; équipe énergie sans compétence
+    en analyse de données.
+  poids: 2
+
+- id: 50001-7.3
+  chapitre: 7
+  titre_fr: Sensibilisation à la performance énergétique
+  titre_en: Energy awareness
+  exigence_fr: >
+    Les personnes travaillant sous le contrôle de l'organisme connaissent la
+    politique énergétique, leur contribution à la performance énergétique et aux
+    objectifs, l'effet de leurs pratiques sur les usages significatifs, et les
+    conséquences d'un écart aux consignes de fonctionnement.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Supports de sensibilisation ; affichage des consommations"
+    - "Entretiens avec des opérateurs"
+  questions_audit:
+    - "Que pouvez-vous faire à votre poste pour réduire la consommation ? (à un opérateur)"
+  documents_types: [support_sensibilisation]
+  hls_commun: oui
+  equivalences: [45001-7.3, 9001-7.3, 14001-7.2]
+  nuance_de: 45001-7.3
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Sensibilisation limitée à « éteindre les lumières » ; usages significatifs
+    inconnus des opérateurs.
+  poids: 1
+
+- id: 50001-8.1
+  chapitre: 8
+  titre_fr: Maîtrise opérationnelle des usages significatifs
+  titre_en: Operational control of significant energy uses
+  exigence_fr: >
+    Les installations et procédés liés aux usages significatifs sont exploités et
+    entretenus selon des critères définis : consignes de fonctionnement
+    (températures, pressions, horaires, points de consigne), plans de maintenance
+    orientés performance (nettoyage des échangeurs, purges, étanchéité, filtres),
+    communication de ces critères aux personnes concernées y compris les
+    prestataires, et enregistrements prouvant l'application. Les changements sont
+    examinés avant mise en œuvre et les processus externalisés restent maîtrisés.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Consignes d'exploitation par usage significatif"
+    - "Plan de maintenance avec critères énergétiques"
+    - "Enregistrements de relevés et d'interventions"
+  questions_audit:
+    - "Quelles sont les consignes de fonctionnement de votre installation de froid, et qui les vérifie ?"
+    - "Quand les échangeurs ont-ils été nettoyés ?"
+  documents_types: [consignes_exploitation_energie, plan_maintenance, instruction_travail]
+  hls_commun: oui
+  equivalences: [45001-8.1.1a, 9001-8.1, 14001-8.1a]
+  nuance_de: 45001-8.1.1a
+  applicabilite: tous
+  regles_terrain: [ENE-01, ENE-03, ENE-04, ENE-05, ENE-06, ENE-07, ENE-08, ENE-11]
+  erreurs_frequentes: >
+    Points de consigne laissés à l'appréciation des opérateurs ; maintenance sans
+    critère énergétique ; prestataires non informés.
+  poids: 3
+
+- id: 50001-8.2
+  chapitre: 8
+  titre_fr: Conception intégrant la performance énergétique
+  titre_en: Design considering energy performance
+  exigence_fr: >
+    Lors de la conception ou de la rénovation d'installations, d'équipements, de
+    systèmes et de procédés susceptibles d'avoir un impact significatif sur la
+    performance énergétique sur leur durée de vie, l'organisme intègre des
+    opportunités d'amélioration et la maîtrise opérationnelle dès la conception
+    (dimensionnement, régulation, comptage, récupération de chaleur), et
+    enregistre les résultats de cette prise en compte.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Fiches ou revues de conception avec critères énergétiques"
+    - "Comptage et régulation prévus dès la conception"
+    - "Comparaison d'options en coût global"
+  questions_audit:
+    - "Quel projet récent a intégré l'énergie dès la conception, et qu'avez-vous choisi ?"
+  documents_types: [fiche_conception_energie, dossier_conception]
+  hls_commun: non
+  equivalences: [9001-8.3a, 14001-8.1b]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Conception au moindre investissement sans coût global ; comptage oublié ;
+    régulation absente.
+  poids: 2
+
+- id: 50001-8.3
+  chapitre: 8
+  titre_fr: Achats intégrant la performance énergétique
+  titre_en: Procurement considering energy performance
+  exigence_fr: >
+    Pour les achats de produits, équipements et services énergivores ou ayant un
+    impact sur les usages significatifs, l'organisme informe les fournisseurs que
+    la performance énergétique est un critère d'évaluation, définit et applique
+    des critères d'achat (rendement, classe énergétique, coût sur la durée de
+    vie), et définit ses spécifications pour l'achat d'énergie elle-même
+    (contrats, puissance souscrite, qualité) quand c'est possible.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Critères énergétiques dans les cahiers des charges et appels d'offres"
+    - "Comparaisons en coût global"
+    - "Spécifications d'achat d'énergie (contrat, puissance souscrite)"
+  questions_audit:
+    - "Comment le rendement d'un moteur ou d'un compresseur entre-t-il dans votre choix ?"
+    - "Avez-vous revu votre contrat de fourniture d'électricité ?"
+  documents_types: [criteres_achats_energie, procedure_achats]
+  hls_commun: non
+  equivalences: [9001-8.4.3, 14001-8.1b]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Achats au prix d'acquisition seul ; fournisseurs non informés ; contrat
+    d'énergie jamais optimisé.
+  poids: 2
+
+- id: 50001-9.1.1
+  chapitre: 9
+  titre_fr: Surveillance et analyse de la performance énergétique
+  titre_en: Monitoring and analysis of energy performance
+  exigence_fr: >
+    L'organisme suit et analyse les caractéristiques clés de sa performance :
+    efficacité, usages et consommations des usages significatifs, variables
+    pertinentes, indicateurs comparés à la référence, efficacité des plans
+    d'action, consommations réelles comparées aux prévisions ; les écarts
+    significatifs sont analysés et traités ; les méthodes et fréquences sont
+    définies et les résultats enregistrés et présentés.
+  exigence_en: ""
+  type: enregistrement
+  preuves_attendues:
+    - "Tableau de bord énergétique périodique avec analyse des écarts"
+    - "Comptes rendus de l'équipe énergie"
+    - "Traitement des dérives"
+  questions_audit:
+    - "Quel écart significatif avez-vous détecté ce trimestre, et qu'avez-vous fait ?"
+  documents_types: [tableau_ipe, procedure_surveillance_mesure]
+  hls_commun: oui
+  equivalences: [45001-9.1.1a, 45001-9.1.1c, 14001-9.1.1]
+  nuance_de: 45001-9.1.1a
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Données collectées sans analyse ; dérives détectées à la facture ; aucune
+    comparaison aux prévisions.
+  poids: 3
+
+- id: 50001-9.1.2
+  chapitre: 9
+  titre_fr: Évaluation de la conformité énergétique
+  titre_en: Energy compliance evaluation
+  exigence_fr: >
+    L'organisme évalue à intervalles définis le respect de ses obligations liées
+    à l'énergie (audit énergétique réglementaire obligatoire au-delà des seuils,
+    performance des bâtiments, étiquetage, engagements contractuels), enregistre
+    les résultats et traite les écarts.
+  exigence_en: ""
+  type: enregistrement
+  preuves_attendues:
+    - "Registre des obligations énergétiques"
+    - "Rapport d'audit énergétique réglementaire"
+    - "Évaluation datée"
+  questions_audit:
+    - "Êtes-vous soumis à l'audit énergétique obligatoire, et l'avez-vous réalisé ?"
+  documents_types: [registre_exigences_legales, rapport_audit_energetique, rapport_evaluation_conformite]
+  hls_commun: non
+  equivalences: [45001-9.1.2, 14001-9.1.2]
+  nuance_de: 45001-9.1.2
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Seuils de l'audit obligatoire inconnus ; obligations énergie absentes du
+    registre.
+  poids: 2
+
+- id: 50001-9.3
+  chapitre: 9
+  titre_fr: Revue de direction — entrées énergétiques
+  titre_en: Management review — energy inputs
+  exigence_fr: >
+    La revue examine, en plus des entrées communes, la performance énergétique et
+    son amélioration par rapport à la référence, les indicateurs, l'état des
+    usages significatifs et des plans d'action, les résultats de la revue
+    énergétique, les opportunités et les prévisions de consommation ; elle décide
+    des évolutions de la politique, des objectifs, des indicateurs, de la
+    référence, des ressources et des plans.
+  exigence_en: ""
+  type: enregistrement
+  preuves_attendues:
+    - "Compte rendu couvrant ces entrées"
+    - "Décisions tracées"
+  questions_audit:
+    - "Quelle amélioration de performance a été présentée à la dernière revue, et sur quelle base de calcul ?"
+  documents_types: [compte_rendu_revue_direction, tableau_ipe]
+  hls_commun: oui
+  equivalences: [45001-9.3a, 45001-9.3b, 14001-9.3]
+  nuance_de: 45001-9.3a
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Revue sans chiffres normalisés ; décisions sans suite.
+  poids: 2
+
+- id: 50001-10
+  chapitre: 10
+  titre_fr: Amélioration de la performance énergétique
+  titre_en: Energy performance improvement
+  exigence_fr: >
+    L'organisme démontre l'amélioration continue de sa performance énergétique
+    (résultats mesurés, normalisés, comparés à la référence) et de l'efficacité
+    de son système ; les non-conformités (dérives, écarts aux consignes, écarts
+    d'audit) sont traitées par des actions correctives dont l'efficacité est
+    vérifiée.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Historique des indicateurs sur plusieurs périodes"
+    - "Registre des non-conformités énergie"
+    - "Économies vérifiées"
+  questions_audit:
+    - "De combien votre performance s'est-elle améliorée depuis la référence, et comment le prouvez-vous ?"
+  documents_types: [tableau_ipe, fiche_nc_action_corrective]
+  hls_commun: oui
+  equivalences: [45001-10.2b, 45001-10.3, 14001-10.2]
+  nuance_de: 45001-10.3
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Amélioration affirmée sur des kWh bruts ; dérives non traitées comme
+    non-conformités.
+  poids: 2

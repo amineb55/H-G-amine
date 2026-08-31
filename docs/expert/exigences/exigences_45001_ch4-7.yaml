@@ -1,0 +1,929 @@
+# =====================================================================
+# MODÈLE D'EXIGENCES ISO 45001 — CHAPITRES 4 À 7
+# Statut : BROUILLON v0.1 — rédigé par l'assistant IA, À RELIRE ET VALIDER
+#          enregistrement par enregistrement par Amine Boukha avant intégration.
+# Règle : aucune phrase de la norme. Chaque exigence est décrite comme l'état
+#         qu'un auditeur constate quand elle est satisfaite.
+# Convention d'id : norme-clause ; suffixe a/b/c quand une clause est éclatée
+#         en plusieurs exigences auditables (ex. 45001-5.1a, 45001-5.1b).
+# exigence_en / titre_en : traduction à faire par le relecteur (voir document
+#         « Apports de l'expert », §14). Les titres EN sont proposés.
+# regles_terrain : seuls les ids des nouveaux référentiels (IND, SAN, LOG, HOR)
+#         sont renseignés ; les ids BTP-xx et BUR-xx existants sont à rattacher
+#         par Amine (il connaît le contenu de ses 24 règles).
+# =====================================================================
+
+- id: 45001-4.1
+  chapitre: 4
+  titre_fr: Enjeux internes et externes
+  titre_en: Internal and external issues
+  exigence_fr: >
+    L'organisme a identifié et formalisé les enjeux internes et externes qui
+    influencent sa capacité à protéger la santé et la sécurité des personnes :
+    nature des activités, profil de la main-d'œuvre, sous-traitance, environnement
+    réglementaire, attentes sociales, contraintes économiques. Cette analyse est
+    revue périodiquement et sert réellement de point d'entrée à la planification.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Analyse de contexte (SWOT, PESTEL ou tableau des enjeux) datée"
+    - "Trace de revue des enjeux (revue de direction, réunion annuelle)"
+    - "Lien visible entre un enjeu et une action ou un objectif du système"
+  questions_audit:
+    - "Quels enjeux externes ont changé depuis un an, et qu'avez-vous modifié en conséquence ?"
+    - "Où retrouve-t-on l'influence de cette analyse dans vos objectifs ou vos risques ?"
+  documents_types: [analyse_contexte]
+  hls_commun: oui
+  equivalences: [9001-4.1, 14001-4.1]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Analyse générique copiée d'un modèle, sans lien avec l'activité réelle ; jamais
+    revue après la certification ; enjeux SST absents d'une analyse pensée uniquement
+    qualité.
+  poids: 1
+
+- id: 45001-4.2
+  chapitre: 4
+  titre_fr: Parties intéressées et leurs attentes
+  titre_en: Interested parties and their expectations
+  exigence_fr: >
+    L'organisme a listé les parties qui comptent pour sa performance SST — les
+    travailleurs et leurs représentants en premier, puis autorités, clients donneurs
+    d'ordre, sous-traitants, riverains, assureurs, médecin du travail — et, pour
+    chacune, ce qu'elle attend en matière de santé-sécurité. Il a tranché lesquelles
+    de ces attentes deviennent des obligations qu'il s'impose. La liste est revue et
+    alimente la veille réglementaire et la planification.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Tableau des parties intéressées avec attentes et décision (retenue / non retenue)"
+    - "Trace de revue (date, évolutions)"
+    - "Cohérence avec le registre des exigences légales et autres"
+  questions_audit:
+    - "Qu'attendent vos travailleurs de ce système, et comment le savez-vous ?"
+    - "Quelle attente d'un client ou d'une autorité avez-vous transformée en exigence interne ?"
+    - "Qui a été ajouté ou retiré de cette liste depuis la dernière revue ?"
+  documents_types: [registre_parties_interessees, analyse_contexte]
+  hls_commun: oui
+  equivalences: [9001-4.2, 14001-4.2]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Liste copiée d'un modèle ; travailleurs absents ou traités de manière générique ;
+    attentes non traduites en obligations ; aucune revue.
+  poids: 2
+
+- id: 45001-4.3
+  chapitre: 4
+  titre_fr: Domaine d'application du système
+  titre_en: Scope of the management system
+  exigence_fr: >
+    Le périmètre du système est écrit, précis et cohérent avec la réalité : sites,
+    activités, produits ou services, fonctions couvertes. Il inclut toutes les
+    activités qui peuvent affecter la santé et la sécurité des personnes travaillant
+    sous le contrôle de l'organisme, y compris les activités externalisées, les
+    chantiers et les interventions chez les clients. Il est disponible pour ceux qui
+    en ont besoin.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Déclaration de domaine d'application approuvée (document ou chapitre du manuel)"
+    - "Cohérence avec le certificat visé et la fiche de l'organisme"
+    - "Justification écrite de toute exclusion de site ou d'activité"
+  questions_audit:
+    - "Une activité ou un site est-il exclu ? Pourquoi, et qui y travaille ?"
+    - "Vos chantiers ou interventions chez les clients sont-ils couverts ?"
+    - "Où le périmètre est-il consultable ?"
+  documents_types: [declaration_domaine_application]
+  hls_commun: oui
+  equivalences: [9001-4.3, 14001-4.3]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Périmètre réduit pour écarter les activités les plus dangereuses (maintenance,
+    transport, chantiers) ; sous-traitance de tâches dangereuses sortie du périmètre ;
+    périmètre non revu après ouverture d'un site.
+  poids: 2
+
+- id: 45001-4.4
+  chapitre: 4
+  titre_fr: Système de management et ses processus
+  titre_en: Management system and its processes
+  exigence_fr: >
+    Les processus qui font vivre le système (identification des dangers,
+    planification, maîtrise opérationnelle, urgences, surveillance, amélioration)
+    sont identifiés, décrits avec leurs interactions, pilotés et améliorés. Le
+    système n'est pas un classeur : il se voit dans le fonctionnement réel de
+    l'organisme.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Cartographie des processus et fiches processus"
+    - "Manuel ou description du système (non obligatoire, mais fréquent)"
+    - "Preuves de fonctionnement des processus (enregistrements, indicateurs)"
+  questions_audit:
+    - "Montrez-moi comment les résultats de l'évaluation des risques arrivent dans les processus de réalisation."
+    - "Qui pilote le processus « préparation aux urgences », et que mesure-t-il ?"
+  documents_types: [cartographie_processus, fiche_processus, manuel_sst]
+  hls_commun: oui
+  equivalences: [9001-4.4, 14001-4.4]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Cartographie qualité recopiée sans processus SST ; interactions non décrites ;
+    processus décrits mais sans pilote ni indicateur.
+  poids: 2
+
+- id: 45001-5.1a
+  chapitre: 5
+  titre_fr: Engagement visible et responsabilité de la direction
+  titre_en: Visible commitment and accountability of top management
+  exigence_fr: >
+    La direction porte personnellement la prévention : elle assume la responsabilité
+    finale de la santé-sécurité, la politique et les objectifs sont cohérents avec la
+    stratégie, les exigences SST sont intégrées dans les processus métiers et non
+    gérées à côté, et les ressources nécessaires sont effectivement allouées. Les
+    travailleurs perçoivent cet engagement dans les actes : visites terrain,
+    arbitrages, réactions aux incidents.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Comptes rendus de comité de direction où la SST figure à l'ordre du jour"
+    - "Visites de sécurité menées par des dirigeants (planning, comptes rendus)"
+    - "Budget ou décisions d'investissement SST tracés"
+    - "Entretiens croisés direction / travailleurs"
+  questions_audit:
+    - "Quelle décision avez-vous prise cette année où la sécurité a primé sur la production ou le coût ?"
+    - "Quand avez-vous fait votre dernière visite terrain orientée sécurité, et qu'en est-il sorti ?"
+    - "Comment vos managers sont-ils évalués sur la SST ?"
+  documents_types: [compte_rendu_revue_direction, pv_comite_direction, programme_visites_securite]
+  hls_commun: oui
+  equivalences: [9001-5.1.1, 14001-5.1]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Engagement déclaré dans la politique mais invisible sur le terrain ; SST déléguée
+    intégralement au responsable QSE ; budget SST inexistant ou non tracé ; direction
+    absente lors des entretiens d'audit.
+  poids: 3
+
+- id: 45001-5.1b
+  chapitre: 5
+  titre_fr: Culture de prévention, protection des signalants et soutien
+  titre_en: Prevention culture, protection of reporters and support
+  exigence_fr: >
+    La direction promeut une culture où signaler un danger, un incident ou un
+    presqu'accident est encouragé et jamais sanctionné, où les travailleurs peuvent
+    se retirer d'une situation dangereuse sans représailles, et où la consultation et
+    la participation sont soutenues. Les responsables d'équipe sont accompagnés pour
+    jouer leur rôle en prévention, et l'efficacité du système est régulièrement
+    communiquée.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Engagement écrit de non-représailles (droit d'alerte et de retrait)"
+    - "Statistiques de signalements et de presqu'accidents (un volume en hausse est un signe de confiance)"
+    - "Actions de reconnaissance ou de communication sur les résultats SST"
+    - "Formation des encadrants à leur rôle SST"
+  questions_audit:
+    - "Que se passe-t-il pour un salarié qui arrête une tâche qu'il juge dangereuse ?"
+    - "Combien de presqu'accidents ont été signalés ce trimestre, et que sont-ils devenus ?"
+    - "Comment vos chefs d'équipe ont-ils été préparés à leur rôle ?"
+  documents_types: [politique_sst, procedure_incident, support_sensibilisation]
+  hls_commun: non
+  equivalences: []
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Presqu'accidents jamais signalés parce que perçus comme une faute ; droit de
+    retrait inconnu des travailleurs ; encadrants non formés qui privilégient la
+    cadence.
+  poids: 3
+
+- id: 45001-5.2
+  chapitre: 5
+  titre_fr: Politique santé-sécurité
+  titre_en: OH&S policy
+  exigence_fr: >
+    Une politique santé-sécurité existe, signée par la direction, adaptée à la taille
+    et aux dangers réels de l'organisme. Elle engage explicitement à offrir des
+    conditions de travail sûres et saines, à supprimer les dangers et réduire les
+    risques, à respecter les obligations légales et autres, à améliorer en continu,
+    et à consulter et faire participer les travailleurs. Elle est diffusée, comprise,
+    appliquée et disponible pour les parties intéressées.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Politique signée et datée, version en vigueur"
+    - "Preuves de diffusion (affichage, intranet, accueil)"
+    - "Compréhension vérifiée par entretien avec des travailleurs"
+    - "Cohérence entre les engagements et les objectifs"
+  questions_audit:
+    - "Que signifie concrètement cet engagement pour votre poste ? (question posée à un opérateur)"
+    - "Qu'avez-vous changé dans la politique lors de sa dernière revue, et pourquoi ?"
+    - "Comment un sous-traitant ou un visiteur en prend-il connaissance ?"
+  documents_types: [politique_sst]
+  hls_commun: oui
+  equivalences: [9001-5.2, 14001-5.2]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Politique générique téléchargée, sans lien avec les dangers de l'activité ; non
+    signée, ou signée par le responsable QSE ; affichée mais inconnue des travailleurs ;
+    engagements manquants (consultation, suppression des dangers). Nuance HLS : la
+    structure est commune aux trois normes, les engagements de fond sont propres à
+    chacune.
+  poids: 3
+
+- id: 45001-5.3
+  chapitre: 5
+  titre_fr: Rôles, responsabilités et autorités
+  titre_en: Roles, responsibilities and authorities
+  exigence_fr: >
+    Chacun connaît son rôle en matière de santé-sécurité, à tous les niveaux :
+    direction, encadrement, opérateurs, fonctions support, personnel temporaire. Les
+    responsabilités et les autorités sont écrites, attribuées, communiquées et
+    connues. Une ou plusieurs personnes ont l'autorité pour faire fonctionner le
+    système et rendre compte à la direction de sa performance.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Organigramme et fiches de poste ou matrice de responsabilités incluant la SST"
+    - "Lettre de mission du responsable du système"
+    - "Délégations formalisées (arrêt de travaux, autorisations, achats SST)"
+    - "Connaissance vérifiée en entretien"
+  questions_audit:
+    - "Qui a l'autorité d'arrêter une machine ou un chantier ? Est-ce écrit ?"
+    - "Quelle est votre responsabilité SST dans votre fiche de poste ? (au chef d'équipe)"
+    - "Qui rend compte à la direction, à quelle fréquence, sur quoi ?"
+  documents_types: [organigramme, fiche_de_poste, matrice_responsabilites]
+  hls_commun: oui
+  equivalences: [9001-5.3, 14001-5.3]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Responsabilités SST concentrées sur le seul responsable QSE ; fiches de poste sans
+    volet sécurité ; intérimaires et sous-traitants hors organigramme ; autorité
+    d'arrêt non formalisée.
+  poids: 2
+
+- id: 45001-5.4a
+  chapitre: 5
+  titre_fr: Consultation des travailleurs
+  titre_en: Consultation of workers
+  exigence_fr: >
+    Un dispositif de consultation des travailleurs et de leurs représentants fonctionne
+    réellement : temps, formation, moyens et accès à l'information leur sont donnés.
+    Les travailleurs sont consultés sur les décisions qui les concernent — politique,
+    rôles, méthode d'évaluation des risques, exigences légales, objectifs,
+    sous-traitance, surveillance, audits, amélioration — et leur avis laisse une
+    trace. Les organismes soumis à une obligation légale de comité de sécurité et
+    d'hygiène l'ont mis en place et le réunissent.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "PV du comité de sécurité et d'hygiène ou de réunions équivalentes, avec suites données"
+    - "Preuves de consultation sur des sujets précis (choix d'EPI, nouvelle procédure)"
+    - "Représentants identifiés, formés, disposant de temps"
+  questions_audit:
+    - "Sur quelle décision récente les travailleurs ont-ils été consultés, et qu'a-t-elle changé ?"
+    - "Montrez-moi le dernier PV du comité et l'état des actions décidées."
+    - "Comment un travailleur de nuit ou d'un site éloigné est-il consulté ?"
+  documents_types: [procedure_consultation_participation, pv_csh, plan_actions]
+  hls_commun: non
+  equivalences: []
+  applicabilite: "tous ; comité de sécurité et d'hygiène obligatoire selon l'effectif (Code du travail marocain, seuil de 50 salariés — à vérifier)"
+  regles_terrain: []
+  erreurs_frequentes: >
+    Comité inexistant malgré l'obligation légale ; PV sans suites ; consultation limitée
+    à une information descendante ; représentants désignés par la direction sans temps
+    ni formation.
+  poids: 3
+
+- id: 45001-5.4b
+  chapitre: 5
+  titre_fr: Participation des travailleurs et levée des obstacles
+  titre_en: Worker participation and removal of barriers
+  exigence_fr: >
+    Les travailleurs non encadrants participent activement : identification des
+    dangers, évaluation des risques, choix des mesures de maîtrise, enquêtes après
+    incident, audits, définition des formations. Les obstacles à cette participation
+    (peur des représailles, barrière de langue, absence de temps, statut précaire) ont
+    été identifiés et réduits.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Noms de travailleurs dans les analyses de risques, enquêtes d'incident, groupes de travail"
+    - "Système de remontée simple (fiche, application, boîte) et statistiques d'utilisation"
+    - "Supports adaptés (langue, illustrations) pour les travailleurs peu lettrés ou allophones"
+  questions_audit:
+    - "Citez-moi un opérateur qui a participé à l'évaluation des risques de son poste."
+    - "Comment un intérimaire ou un travailleur ne lisant pas le français signale-t-il un danger ?"
+    - "Quel obstacle à la participation avez-vous levé cette année ?"
+  documents_types: [procedure_consultation_participation, fiche_remontee_danger, analyse_risques]
+  hls_commun: non
+  equivalences: []
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Analyses de risques faites par le seul responsable QSE dans son bureau ; fiches de
+    remontée jamais utilisées ; aucune adaptation aux travailleurs analphabètes ou
+    allophones, fréquents sur les chantiers.
+  poids: 3
+
+- id: 45001-6.1.1
+  chapitre: 6
+  titre_fr: Risques et opportunités pour le système
+  titre_en: Risks and opportunities for the system
+  exigence_fr: >
+    En plus des risques SST proprement dits, l'organisme a identifié ce qui peut
+    empêcher son système d'atteindre ses résultats ou, au contraire, l'aider : enjeux
+    du contexte, attentes des parties intéressées, périmètre, changements prévus. Ces
+    risques et opportunités sont formalisés, traités par des actions planifiées, et la
+    méthode suivie est décrite.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Registre des risques et opportunités du système (distinct ou intégré à l'analyse de contexte)"
+    - "Actions associées avec responsable et échéance"
+    - "Description de la méthode (critères, fréquence)"
+  questions_audit:
+    - "Quel risque pèse sur votre système lui-même (turnover, perte de compétence, croissance rapide), et que faites-vous ?"
+    - "Quelle opportunité avez-vous saisie pour améliorer la prévention ?"
+  documents_types: [registre_risques_opportunites, analyse_contexte]
+  hls_commun: oui
+  equivalences: [9001-6.1.1, 14001-6.1.1]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Confusion entre risques SST du terrain et risques du système ; registre vide ou
+    sans actions ; exercice fait uniquement pour l'audit.
+  poids: 2
+
+- id: 45001-6.1.2.1
+  chapitre: 6
+  titre_fr: Identification des dangers
+  titre_en: Hazard identification
+  exigence_fr: >
+    L'organisme dispose d'une méthode structurée, appliquée et actualisée, pour
+    repérer les dangers liés à ses activités. Cette méthode couvre les situations
+    normales et anormales, les situations d'urgence, les personnes présentes sur site
+    quel que soit leur statut, l'organisation du travail et les facteurs humains, les
+    équipements et l'environnement de travail, ainsi que les changements prévus. Elle
+    prend en compte les incidents passés.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Procédure ou méthode d'identification des dangers, datée et approuvée"
+    - "Registre ou inventaire des dangers par activité et par zone"
+    - "Traces de mise à jour après changement, incident ou nouvelle activité"
+    - "Participation des travailleurs visible (comptes rendus, signatures)"
+  questions_audit:
+    - "Comment identifiez-vous les dangers d'une nouvelle activité avant son démarrage ?"
+    - "Montrez-moi la dernière mise à jour de votre inventaire des dangers et ce qui l'a déclenchée."
+    - "Les sous-traitants et les visiteurs sont-ils couverts ? Où ?"
+    - "Quel incident récent a modifié votre analyse ?"
+  documents_types: [procedure_identification_dangers, registre_dangers, analyse_risques]
+  hls_commun: non
+  equivalences: []
+  applicabilite: tous
+  regles_terrain: [IND-01, IND-03, IND-04, IND-10, SAN-01, SAN-06, LOG-03, LOG-05, HOR-01, HOR-03]
+  erreurs_frequentes: >
+    Inventaire fait une fois à la certification et jamais mis à jour ; sous-traitants
+    oubliés ; situations d'urgence traitées dans un autre document sans lien ; aucune
+    trace de consultation des travailleurs.
+  poids: 3
+
+- id: 45001-6.1.2.2
+  chapitre: 6
+  titre_fr: Évaluation des risques santé-sécurité
+  titre_en: Assessment of OH&S risks
+  exigence_fr: >
+    Les dangers identifiés sont évalués avec une méthode définie, écrite et appliquée
+    de manière homogène : critères de gravité, de probabilité et d'exposition, prise
+    en compte des mesures déjà en place, seuils d'acceptabilité et règles de
+    priorisation. La méthode est proportionnée à l'activité, elle est suivie de
+    décisions (mesures, échéances), et les résultats sont conservés et actualisés.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Procédure ou grille de cotation avec échelles et seuils"
+    - "Analyse des risques par poste ou activité, datée, avec cotation brute et résiduelle"
+    - "Lien visible entre risques prioritaires et plan d'action"
+    - "Participation des travailleurs concernés"
+  questions_audit:
+    - "Expliquez-moi votre échelle de gravité, et où vous placez un accident avec arrêt."
+    - "Quels sont vos trois risques les plus élevés, et que faites-vous dessus ?"
+    - "Un même danger est-il coté de la même façon sur deux sites ?"
+  documents_types: [procedure_evaluation_risques, analyse_risques, plan_actions]
+  hls_commun: non
+  equivalences: []
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Cotation sans méthode écrite ; tous les risques cotés « moyens » ; risque résiduel
+    jamais calculé ; analyse non mise à jour après incident ; risques prioritaires sans
+    action.
+  poids: 3
+
+- id: 45001-6.1.2.3
+  chapitre: 6
+  titre_fr: Opportunités d'amélioration de la santé-sécurité
+  titre_en: OH&S improvement opportunities
+  exigence_fr: >
+    L'organisme repère les occasions d'améliorer la santé-sécurité : réorganisation
+    du travail, nouveaux équipements, conception des postes, projets de changement,
+    retours d'expérience, bonnes pratiques du secteur. Ces opportunités sont évaluées
+    et celles qui sont retenues entrent dans la planification.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Rubrique « opportunités » dans l'analyse de contexte, les revues ou le plan d'action"
+    - "Exemples concrets réalisés (suppression d'une manutention par un équipement, par exemple)"
+  questions_audit:
+    - "Quelle opportunité d'amélioration avez-vous identifiée lors de votre dernier investissement ?"
+    - "Comment un changement de procédé est-il utilisé pour réduire un risque ?"
+  documents_types: [registre_risques_opportunites, plan_actions]
+  hls_commun: non
+  equivalences: []
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Rubrique absente ou remplie de généralités ; opportunités confondues avec les
+    actions correctives.
+  poids: 1
+
+- id: 45001-6.1.3a
+  chapitre: 6
+  titre_fr: Identification et accès aux exigences légales et autres
+  titre_en: Identification of and access to legal and other requirements
+  exigence_fr: >
+    L'organisme sait quels textes légaux et quelles autres exigences (contrats
+    clients, conventions, normes volontaires, exigences de groupe) s'appliquent à ses
+    activités, à ses équipements et à son personnel. Ces exigences sont listées,
+    accessibles, et un dispositif de veille repère les nouveautés dans un délai
+    défini.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Registre des exigences légales et autres : référence, domaine, articles applicables, périmètre concerné"
+    - "Procédure ou méthode de veille (sources, fréquence, responsable)"
+    - "Preuve de mise à jour récente (nouveau texte intégré, date)"
+  questions_audit:
+    - "Quel texte régit vos obligations en matière de comité de sécurité et de médecine du travail ?"
+    - "Quel est le dernier texte intégré à votre registre, et quand ?"
+    - "Où un chef de chantier consulte-t-il les règles applicables à son activité ?"
+  documents_types: [registre_exigences_legales, procedure_veille_reglementaire]
+  hls_commun: non
+  equivalences: [14001-6.1.3]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Registre limité au Code du travail sans les décrets et arrêtés d'application ;
+    veille confiée à personne ; exigences contractuelles des clients oubliées ; textes
+    cités sans les articles concernés.
+  poids: 3
+
+- id: 45001-6.1.3b
+  chapitre: 6
+  titre_fr: Intégration des exigences légales dans le fonctionnement
+  titre_en: Integration of legal requirements into operations
+  exigence_fr: >
+    Les exigences identifiées ne restent pas dans un registre : elles sont traduites
+    dans les procédures, les contrôles périodiques, les formations, les cahiers des
+    charges achats et les critères d'évaluation des risques. Chaque exigence est
+    rattachée à un responsable et à une preuve de respect, et le registre est tenu à
+    jour quand une exigence change.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Colonne « comment nous y répondons » (ou équivalent) dans le registre"
+    - "Planning des contrôles réglementaires : installations électriques, engins de levage, extincteurs, appareils à pression"
+    - "Trace de modification d'une procédure suite à un nouveau texte"
+  questions_audit:
+    - "Prenez une exigence de votre registre : montrez-moi où elle est appliquée."
+    - "Vos contrôles réglementaires périodiques sont-ils tous planifiés et à jour ?"
+    - "Qui décide de ce qui change quand un texte est modifié ?"
+  documents_types: [registre_exigences_legales, planning_controles_reglementaires]
+  hls_commun: non
+  equivalences: [14001-6.1.3]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Registre à jour mais procédures non modifiées ; contrôles réglementaires périodiques
+    en retard ou inconnus ; aucune preuve de respect associée aux exigences.
+  poids: 3
+
+- id: 45001-6.1.4
+  chapitre: 6
+  titre_fr: Planification des actions
+  titre_en: Planning of actions
+  exigence_fr: >
+    Les actions décidées pour traiter les risques et opportunités, répondre aux
+    exigences légales et se préparer aux urgences sont planifiées avec un responsable,
+    une échéance et des moyens, intégrées aux processus concernés, et leur efficacité
+    est évaluée. L'ordre de priorité respecte la hiérarchie des mesures de maîtrise,
+    et les actions tiennent compte des bonnes pratiques et des options techniques
+    disponibles.
+  exigence_en: ""
+  type: enregistrement
+  preuves_attendues:
+    - "Plan d'action consolidé (risques, réglementaire, urgences, incidents, audits)"
+    - "Suivi d'avancement avec dates et statut"
+    - "Évaluation de l'efficacité des actions clôturées"
+  questions_audit:
+    - "Montrez-moi l'action issue de votre risque le plus élevé et son état."
+    - "Comment mesurez-vous qu'une action a réellement réduit le risque ?"
+    - "Combien d'actions sont en retard, et pourquoi ?"
+  documents_types: [plan_actions]
+  hls_commun: oui
+  equivalences: [9001-6.1.2, 14001-6.1.4]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Plusieurs plans d'action non consolidés ; actions sans responsable ni échéance ;
+    efficacité jamais vérifiée ; actions de type « sensibiliser » privilégiées sur les
+    mesures techniques.
+  poids: 2
+
+- id: 45001-6.2.1
+  chapitre: 6
+  titre_fr: Objectifs santé-sécurité
+  titre_en: OH&S objectives
+  exigence_fr: >
+    Des objectifs de santé-sécurité sont fixés pour les fonctions et les niveaux
+    concernés. Ils sont cohérents avec la politique, mesurables ou évaluables,
+    tiennent compte des exigences applicables, des résultats de l'évaluation des
+    risques et de la consultation des travailleurs, et sont suivis, communiqués et
+    mis à jour.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Liste des objectifs avec indicateurs, valeurs cibles et échéances"
+    - "Lien avec la politique et les risques prioritaires"
+    - "Preuves de communication et de suivi (tableau de bord, réunions)"
+  questions_audit:
+    - "Quel objectif découle directement de votre risque prioritaire ?"
+    - "Comment un chef d'équipe connaît-il l'objectif qui le concerne ?"
+    - "Quel objectif n'a pas été atteint l'an dernier, et qu'en avez-vous conclu ?"
+  documents_types: [objectifs_sst, tableau_indicateurs]
+  hls_commun: oui
+  equivalences: [9001-6.2.1, 14001-6.2.1]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Objectifs uniquement réactifs (« zéro accident ») sans objectifs de moyens ; non
+    mesurables ; fixés au niveau direction sans déclinaison ; non suivis en cours
+    d'année.
+  poids: 2
+
+- id: 45001-6.2.2
+  chapitre: 6
+  titre_fr: Programme de réalisation des objectifs
+  titre_en: Programme to achieve objectives
+  exigence_fr: >
+    Pour chaque objectif, un programme dit ce qui sera fait, par qui, avec quelles
+    ressources, pour quand, comment le résultat sera évalué et par quel indicateur.
+    Ce programme est intégré au pilotage courant de l'organisme et non traité comme un
+    document isolé.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Programme par objectif : actions, responsables, ressources, échéances, indicateurs"
+    - "Points d'avancement tracés"
+    - "Intégration dans le budget et les réunions de pilotage"
+  questions_audit:
+    - "Quelles ressources ont été allouées à cet objectif ?"
+    - "Qui suit l'avancement, et à quel rythme ?"
+    - "Que s'est-il passé quand une action a pris du retard ?"
+  documents_types: [programme_sst, plan_actions]
+  hls_commun: oui
+  equivalences: [9001-6.2.2, 14001-6.2.2]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Objectifs sans programme ; programme sans ressources ; suivi uniquement à la revue
+    de direction annuelle.
+  poids: 2
+
+- id: 45001-7.1
+  chapitre: 7
+  titre_fr: Ressources
+  titre_en: Resources
+  exigence_fr: >
+    Les moyens nécessaires au système sont identifiés et fournis : personnel
+    compétent, temps dédié, budget, équipements de protection et de mesure,
+    infrastructure, prestations externes (médecine du travail, organismes de
+    contrôle). L'adéquation des ressources est examinée périodiquement par la
+    direction.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Budget ou lignes de dépenses SST"
+    - "Effectif et temps alloués à la fonction SST"
+    - "Contrats avec les prestataires externes"
+    - "Décisions de la revue de direction sur les ressources"
+  questions_audit:
+    - "Quel budget SST avez-vous engagé cette année, et sur quoi ?"
+    - "Le responsable SST a-t-il réellement le temps de faire son travail ?"
+    - "Quelle demande de ressource a été refusée, et avec quelle conséquence ?"
+  documents_types: [budget_sst, compte_rendu_revue_direction]
+  hls_commun: oui
+  equivalences: [9001-7.1.1, 14001-7.1]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Ressources non identifiées avant les besoins ; responsable SST à temps très partiel
+    sans moyens ; EPI achetés au moins cher sans évaluation.
+  poids: 1
+
+- id: 45001-7.2a
+  chapitre: 7
+  titre_fr: Compétences nécessaires et leur acquisition
+  titre_en: Required competence and its acquisition
+  exigence_fr: >
+    Pour chaque poste ou activité, les compétences nécessaires pour travailler en
+    sécurité et faire vivre le système sont définies. L'organisme vérifie que les
+    personnes les détiennent (formation, expérience, tutorat), comble les écarts par
+    des actions dont l'efficacité est évaluée, et conserve les preuves. L'accueil des
+    nouveaux, des intérimaires et des personnes mutées est organisé.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Matrice des compétences ou fiches de poste avec compétences SST"
+    - "Plan de formation et attestations"
+    - "Évaluation de l'efficacité (test, observation au poste, entretien)"
+    - "Procédure et check-list d'accueil sécurité"
+  questions_audit:
+    - "Quelles compétences SST exigez-vous d'un chef d'équipe, et comment les vérifiez-vous ?"
+    - "Montrez-moi l'accueil sécurité du dernier embauché."
+    - "Comment savez-vous qu'une formation a été efficace ?"
+  documents_types: [matrice_competences, plan_formation, livret_accueil, fiche_de_poste]
+  hls_commun: oui
+  equivalences: [9001-7.2, 14001-7.2]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Formations réalisées sans besoin défini ; efficacité jamais évaluée ; intérimaires
+    et sous-traitants sans accueil ; attestations introuvables.
+  poids: 2
+
+- id: 45001-7.2b
+  chapitre: 7
+  titre_fr: Habilitations et autorisations pour les tâches à risque
+  titre_en: Authorisations for high-risk tasks
+  exigence_fr: >
+    Les tâches qui exigent une aptitude ou une autorisation particulière — conduite
+    d'engins et de chariots, travaux électriques, travail en hauteur, levage, espaces
+    confinés, soudage, manipulation de produits dangereux, secourisme, lutte contre
+    l'incendie — sont identifiées, et seules des personnes formées, jugées aptes et
+    autorisées par écrit les réalisent. Les autorisations ont une validité et sont
+    renouvelées.
+  exigence_en: ""
+  type: enregistrement
+  preuves_attendues:
+    - "Liste des tâches soumises à autorisation"
+    - "Registre des habilitations avec dates de validité"
+    - "Attestations de formation et d'aptitude médicale correspondantes"
+    - "Contrôle sur le terrain : la personne observée est bien autorisée"
+  questions_audit:
+    - "Qui conduit ce chariot, et où est son autorisation ?"
+    - "Combien d'habilitations expirent dans les trois prochains mois ?"
+    - "Un sous-traitant intervenant sur vos installations électriques doit-il prouver quoi ?"
+  documents_types: [registre_habilitations, plan_formation, dossier_medecine_travail]
+  hls_commun: non
+  equivalences: []
+  applicabilite: tous
+  regles_terrain: [IND-02, IND-05, IND-10, LOG-04, SAN-12]
+  erreurs_frequentes: >
+    Conducteurs d'engins « expérimentés » sans formation ni autorisation ; habilitations
+    électriques absentes ; aucun secouriste formé par équipe ; visites médicales
+    d'aptitude non faites.
+  poids: 3
+
+- id: 45001-7.3
+  chapitre: 7
+  titre_fr: Sensibilisation
+  titre_en: Awareness
+  exigence_fr: >
+    Les personnes qui travaillent sous le contrôle de l'organisme connaissent la
+    politique et les objectifs qui les concernent, les dangers et les risques de leur
+    poste, les mesures de maîtrise, ce qu'elles apportent à la performance SST, les
+    conséquences d'un écart, les incidents survenus et les enseignements tirés, et
+    leur droit de se retirer d'une situation dangereuse.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Supports de sensibilisation adaptés (langue, images) et preuves de diffusion"
+    - "Causeries, quarts d'heure sécurité ou briefings tracés"
+    - "Retour d'expérience communiqué après incident"
+    - "Entretiens avec des travailleurs"
+  questions_audit:
+    - "Quels sont les trois principaux risques de votre poste ? (à un opérateur)"
+    - "Quel est le dernier incident dont on vous a parlé, et qu'en retenez-vous ?"
+    - "Que faites-vous si vous jugez une tâche trop dangereuse ?"
+  documents_types: [support_sensibilisation, registre_causeries, livret_accueil]
+  hls_commun: oui
+  equivalences: [9001-7.3, 14001-7.3]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Sensibilisation réduite à une signature de fiche à l'embauche ; supports en français
+    pour un personnel arabophone ou amazighophone ; incidents non partagés.
+  poids: 2
+
+- id: 45001-7.4.1
+  chapitre: 7
+  titre_fr: Dispositif de communication
+  titre_en: Communication arrangements
+  exigence_fr: >
+    L'organisme a défini ce qu'il communique en santé-sécurité, à qui, quand, comment
+    et qui en est chargé, en tenant compte de la diversité des destinataires (langue,
+    niveau de lecture, handicap) et des obligations légales de communication. Les
+    retours des destinataires sont pris en compte et la communication laisse des
+    traces.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Plan ou procédure de communication SST"
+    - "Supports diffusés (affichage, écrans, réunions)"
+    - "Traces des communications obligatoires (déclarations aux autorités, informations au comité)"
+  questions_audit:
+    - "Comment une consigne nouvelle atteint-elle un travailleur de nuit ?"
+    - "Quelles communications SST sont obligatoires pour vous, et comment prouvez-vous les avoir faites ?"
+  documents_types: [procedure_communication, plan_communication]
+  hls_commun: oui
+  equivalences: [9001-7.4, 14001-7.4.1]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Communication non planifiée, au coup par coup ; langue inadaptée ; absence de trace.
+  poids: 1
+
+- id: 45001-7.4.2
+  chapitre: 7
+  titre_fr: Communication interne
+  titre_en: Internal communication
+  exigence_fr: >
+    L'information SST circule dans les deux sens et entre niveaux : descendante
+    (consignes, résultats, changements), ascendante (signalements, propositions) et
+    transversale (entre équipes, postes et sites). Les travailleurs peuvent
+    contribuer à l'amélioration par ces canaux.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Canaux identifiés (réunions, affichage, application, fiches)"
+    - "Exemples de remontées traitées"
+    - "Diffusion des changements avant leur mise en œuvre"
+  questions_audit:
+    - "Comment un opérateur propose-t-il une amélioration, et que devient sa proposition ?"
+    - "Comment l'équipe du matin apprend-elle un incident survenu la nuit ?"
+  documents_types: [procedure_communication, fiche_remontee_danger]
+  hls_commun: non
+  equivalences: []
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Canaux ascendants inexistants ou non utilisés ; changements communiqués après coup.
+  poids: 1
+
+- id: 45001-7.4.3
+  chapitre: 7
+  titre_fr: Communication externe
+  titre_en: External communication
+  exigence_fr: >
+    Les échanges avec l'extérieur sur la santé-sécurité (autorités, clients,
+    sous-traitants, voisinage, assureurs, organismes de contrôle) sont définis et
+    tracés, y compris les déclarations légales faites dans les délais et les
+    réponses apportées aux demandes reçues de l'extérieur.
+  exigence_en: ""
+  type: enregistrement
+  preuves_attendues:
+    - "Registre des communications externes"
+    - "Déclarations d'accident aux organismes compétents, avec dates"
+    - "Consignes SST transmises aux sous-traitants et aux visiteurs"
+  questions_audit:
+    - "Quand avez-vous déclaré le dernier accident du travail, et à qui ?"
+    - "Comment répondez-vous à une demande d'un client sur vos résultats SST ?"
+  documents_types: [procedure_communication, registre_communications_externes]
+  hls_commun: non
+  equivalences: [14001-7.4.3]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Déclarations tardives ; aucune trace des échanges avec l'inspection du travail ;
+    sous-traitants informés oralement seulement.
+  poids: 1
+
+- id: 45001-7.5.1
+  chapitre: 7
+  titre_fr: Étendue de la documentation
+  titre_en: Extent of documented information
+  exigence_fr: >
+    L'organisme a déterminé quels documents et enregistrements sont nécessaires à
+    l'efficacité de son système, au-delà de ceux exigés, en fonction de sa taille, de
+    ses activités et de la compétence de son personnel. La documentation est
+    proportionnée : ni absente là où elle est nécessaire, ni pléthorique.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Liste des documents du système avec leur statut"
+    - "Justification du niveau de documentation choisi"
+    - "Cohérence entre les documents existants et les exigences du modèle"
+  questions_audit:
+    - "Comment avez-vous décidé de ce qui mérite une procédure écrite ?"
+    - "Quel document a été supprimé parce qu'inutile ?"
+  documents_types: [liste_documents, procedure_maitrise_documentaire]
+  hls_commun: oui
+  equivalences: [9001-7.5.1, 14001-7.5.1]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Copie du système documentaire d'une autre entreprise ; documents rédigés pour
+    l'auditeur et jamais utilisés.
+  poids: 1
+
+- id: 45001-7.5.2
+  chapitre: 7
+  titre_fr: Création et mise à jour des documents
+  titre_en: Creating and updating documents
+  exigence_fr: >
+    Chaque document est identifiable (titre, référence, date, version, auteur), dans
+    un format et sur un support adaptés à ses utilisateurs, et il est revu et
+    approuvé par les bonnes personnes avant diffusion. Les mises à jour suivent le
+    même circuit et l'historique des modifications est visible.
+  exigence_en: ""
+  type: documentaire
+  preuves_attendues:
+    - "Cartouche standard sur les documents"
+    - "Circuit rédaction / vérification / approbation appliqué"
+    - "Historique des versions"
+  questions_audit:
+    - "Qui a approuvé cette procédure, et quand ?"
+    - "Quelle est la version en vigueur, et comment le sait-on ?"
+  documents_types: [procedure_maitrise_documentaire]
+  hls_commun: oui
+  equivalences: [9001-7.5.2, 14001-7.5.2]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Documents sans version ni date ; approbation par le rédacteur lui-même ; formats
+    inadaptés au terrain (procédure de vingt pages pour un poste manuel).
+  poids: 1
+
+- id: 45001-7.5.3a
+  chapitre: 7
+  titre_fr: Disponibilité, accessibilité et protection des documents
+  titre_en: Availability, accessibility and protection of documents
+  exigence_fr: >
+    Les documents en vigueur sont disponibles là où on en a besoin et lisibles ; les
+    versions périmées sont retirées ou identifiées ; les documents et enregistrements
+    sont protégés contre la perte, l'altération et l'accès non autorisé, conservés
+    pendant une durée définie et détruits de façon maîtrisée.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Liste des documents et leur lieu de diffusion"
+    - "Vérification terrain : version en vigueur au poste"
+    - "Règles de conservation, de sauvegarde et de droits d'accès"
+  questions_audit:
+    - "Cette instruction affichée au poste est-elle la version en vigueur ?"
+    - "Combien de temps conservez-vous les dossiers médicaux et les rapports d'accident, et où ?"
+  documents_types: [procedure_maitrise_documentaire, liste_documents]
+  hls_commun: oui
+  equivalences: [9001-7.5.3, 14001-7.5.3]
+  applicabilite: tous
+  regles_terrain: []
+  erreurs_frequentes: >
+    Versions obsolètes sur le terrain ; enregistrements SST perdus lors d'un départ ;
+    données médicales accessibles à tous.
+  poids: 2
+
+- id: 45001-7.5.3b
+  chapitre: 7
+  titre_fr: Documents d'origine externe
+  titre_en: Documents of external origin
+  exigence_fr: >
+    Les documents venus de l'extérieur et nécessaires au système — fiches de données
+    de sécurité, notices d'équipements, textes réglementaires, rapports de contrôle,
+    consignes des clients — sont identifiés, à jour et maîtrisés comme les documents
+    internes.
+  exigence_en: ""
+  type: mise_en_oeuvre
+  preuves_attendues:
+    - "Liste des documents externes avec version et date"
+    - "Fiches de données de sécurité disponibles aux postes concernés, à jour"
+    - "Rapports d'organismes de contrôle classés et suivis"
+  questions_audit:
+    - "Montrez-moi la fiche de données de sécurité de ce produit et sa date."
+    - "Où sont les notices des machines, et qui les utilise ?"
+  documents_types: [liste_documents_externes, fiche_donnees_securite]
+  hls_commun: oui
+  equivalences: [9001-7.5.3, 14001-7.5.3]
+  applicabilite: tous
+  regles_terrain: [IND-03, SAN-05, HOR-08, LOG-11]
+  erreurs_frequentes: >
+    FDS absentes, périmées ou dans une langue inconnue des utilisateurs ; notices de
+    machines perdues ; rapports de contrôle non exploités.
+  poids: 2
