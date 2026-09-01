@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-from app.config import get_settings
+from app.config import get_settings, redact
 from app.models.schemas import (
     InspectionResult,
     InspectionStage,
@@ -122,7 +122,9 @@ async def run_inspection(inspection_id: str, referentiel: str | None = None) -> 
             media_retained=False,
             media_expires_at=None,
             result=None,
-            error=str(exc) or exc.__class__.__name__,
+            # An exception may quote its input back — a rejected credential
+            # included — so what is stored, and later served, is scrubbed.
+            error=redact(str(exc)) or exc.__class__.__name__,
         )
     finally:
         # One exit path: any inspection that reached an audit gives up its
