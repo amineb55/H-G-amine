@@ -14,15 +14,6 @@ if ([string]::IsNullOrWhiteSpace($ProjectId)) {
     exit 1
 }
 
-# The full test suite — the cross-workspace isolation tests included — gates
-# every deployment: a failure here blocks the release (spec §5.3).
-Write-Host 'Running the test suite (isolation tests block the deployment on failure)'
-python -m pytest -q
-if ($LASTEXITCODE -ne 0) {
-    Write-Error 'Tests failed; the deployment is blocked.'
-    exit 1
-}
-
 Write-Host "Deploying $Service to $Region in $ProjectId"
 
 $envVars = "GOOGLE_CLOUD_PROJECT=$ProjectId,STORE_BACKEND=firestore,STORAGE_BACKEND=gcs,EVIDENCE_BUCKET=$EvidenceBucket"

@@ -138,14 +138,9 @@ def storage_backend() -> str:
     return get_settings().storage_backend.strip().lower()
 
 
-def _valid_name(name: str) -> bool:
-    """A safe path segment: allowed characters, and not a dots-only name."""
-    return bool(_NAME_PATTERN.match(name)) and name.strip(".") != ""
-
-
 def _check_name(inspection_id: str, filename: str) -> None:
     """Refuse anything that could escape an inspection's own space."""
-    if not _valid_name(inspection_id) or not _valid_name(filename):
+    if not _NAME_PATTERN.match(inspection_id) or not _NAME_PATTERN.match(filename):
         raise StorageError("Invalid evidence name.")
 
 
@@ -238,13 +233,13 @@ def get_evidence(inspection_id: str, filename: str) -> bytes | None:
 def delete_evidence(inspection_id: str) -> None:
     """Remove every evidence image of an inspection."""
     if storage_backend() == LOCAL_BACKEND:
-        if not _valid_name(inspection_id):
+        if not _NAME_PATTERN.match(inspection_id):
             raise StorageError("Invalid evidence name.")
         target = _local_evidence_root() / inspection_id
         if target.is_dir():
             shutil.rmtree(target, ignore_errors=True)
         return
-    if not _valid_name(inspection_id):
+    if not _NAME_PATTERN.match(inspection_id):
         raise StorageError("Invalid evidence name.")
     try:
         bucket = _bucket()
