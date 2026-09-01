@@ -41,13 +41,13 @@ async def sweep_once() -> int:
         return 0
 
     removed = 0
-    for inspection_id, record in records:
+    for workspace_id, inspection_id, record in records:
         if not _expired(record):
             continue
         try:
             storage.delete_media(inspection_id)
             await inspection_store.update(
-                inspection_id, media_retained=False, media_expires_at=None
+                workspace_id, inspection_id, media_retained=False, media_expires_at=None
             )
             removed += 1
             logger.info("Deleted expired media for inspection %s", inspection_id)

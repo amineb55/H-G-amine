@@ -7,13 +7,14 @@ from pathlib import Path
 from app.services import inspection_store, media_reaper, storage
 
 
-async def _seed(hours_from_now: float) -> str:
+async def _seed(hours_from_now: float, workspace_id: str = "ws-default") -> str:
     inspection_id = f"held-{uuid.uuid4().hex}"
     target = Path(storage.path(inspection_id))
     target.mkdir(parents=True)
     (target / "media.jpg").write_bytes(b"x")
     expiry = datetime.now(timezone.utc) + timedelta(hours=hours_from_now)
     await inspection_store.set(
+        workspace_id,
         inspection_id,
         {
             "status": "done",
@@ -25,7 +26,8 @@ async def _seed(hours_from_now: float) -> str:
 
 
 async def test_expired_media_is_swept_and_unexpired_media_is_spared():
-    expired = await _seed(hours_from_now=-1)
+    # The sweep is maintenance across every workspace, by design.
+    expired = await _seed(hours_from_now=-1, workspace_id="ws-other")
     fresh = await _seed(hours_from_now=+1)
 
     removed = await media_reaper.sweep_once()
@@ -34,9 +36,9 @@ async def test_expired_media_is_swept_and_unexpired_media_is_spared():
     assert not Path(storage.path(expired)).exists()
     assert Path(storage.path(fresh)).exists()
 
-    expired_record = await inspection_store.get(expired)
+    expired_record = await inspection_store.get("ws-other", expired)
     assert expired_record["media_retained"] is False
-    fresh_record = await inspection_store.get(fresh)
+    fresh_record = await inspection_store.get("ws-default", fresh)
     assert fresh_record["media_retained"] is True
 
     storage.delete_media(fresh)
@@ -44,7 +46,7 @@ async def test_expired_media_is_swept_and_unexpired_media_is_spared():
 
 async def test_unreadable_expiry_is_treated_as_expired():
     inspection_id = await _seed(hours_from_now=+1)
-    await inspection_store.update(inspection_id, media_expires_at="not-a-date")
+    await inspection_store.update("ws-default", inspection_id, media_expires_at="not-a-date")
 
     assert await media_reaper.sweep_once() == 1
     assert not Path(storage.path(inspection_id)).exists()

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from fastapi import (
     BackgroundTasks,
+    Depends,
     FastAPI,
     File,
     Form,
@@ -43,10 +44,12 @@ from app.services import (
     evidence,
     inspection_store,
     job_queue,
+    journal,
     media_reaper,
     notification,
     report,
     storage,
+    tenancy,
 )
 from app.services.inspection_job import run_inspection
 
@@ -82,6 +85,26 @@ for _handler in logging.getLogger().handlers:
 logger = logging.getLogger(__name__)
 
 
+async def current_workspace() -> str:
+    """The workspace this request operates in.
+
+    Tenancy is enforced in the data layer: every store call below names this
+    workspace, and a record of another workspace behaves as if it did not
+    exist. Until authentication lands (I4), every request is served in the
+    default workspace; identity will replace this dependency, not the call
+    sites.
+    """
+    return tenancy.DEFAULT_WORKSPACE_ID
+
+
+def current_actor() -> str:
+    """Who performs the action, for the audit journal.
+
+    A placeholder until authentication provides the real identity (debt D3).
+    """
+    return tenancy.UNAUTHENTICATED_ACTOR
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     """Report which backends are active, without blocking startup.
@@ -108,6 +131,23 @@ async def lifespan(_: FastAPI):
         )
     else:
         logger.info("Configuration: all required secrets are present.")
+
+    # Multi-tenancy bootstrap: the default organisation and workspace exist,
+    # and inspections stored before tenancy are adopted into the default
+    # workspace. Best-effort: an unreachable store must not stop startup.
+    try:
+        await tenancy.ensure_default()
+        adopted = await inspection_store.adopt_unscoped(tenancy.DEFAULT_WORKSPACE_ID)
+        if adopted:
+            logger.info(
+                "Adopted %d pre-tenancy inspection(s) into the default workspace.",
+                adopted,
+            )
+    except Exception:  # noqa: BLE001 - reported, never fatal at startup
+        logger.exception(
+            "Could not bootstrap tenancy; requests needing the store will fail "
+            "until it is reachable."
+        )
 
     if inspection_store.backend() == inspection_store.MEMORY_BACKEND:
         logger.warning(
@@ -249,6 +289,7 @@ async def create_inspection(
         None, description="Rule set to apply. Omitted, the sector is detected."
     ),
     files: list[UploadFile] = File(..., description="One video, or up to ten images."),
+    workspace_id: str = Depends(current_workspace),
 ) -> InspectionAccepted:
     """Accept inspection media and queue it for AI-assisted analysis."""
     _validate_upload(files)
@@ -268,6 +309,7 @@ async def create_inspection(
         raise
 
     await inspection_store.set(
+        workspace_id,
         inspection_id,
         {
             "status": InspectionStatus.PROCESSING,
@@ -277,9 +319,14 @@ async def create_inspection(
             "error": None,
         },
     )
+    await journal.record(
+        workspace_id, current_actor(), "inspection.created", inspection_id,
+        referentiel=referentiel.value if referentiel else None, files=len(files),
+    )
 
     job_queue.get_queue(background_tasks).enqueue(
-        run_inspection, inspection_id, referentiel.value if referentiel else None
+        run_inspection, workspace_id, inspection_id,
+        referentiel.value if referentiel else None,
     )
 
     return InspectionAccepted(
@@ -288,9 +335,11 @@ async def create_inspection(
 
 
 @app.get("/inspections/{inspection_id}", response_model=InspectionState)
-async def read_inspection(inspection_id: str) -> InspectionState:
+async def read_inspection(
+    inspection_id: str, workspace_id: str = Depends(current_workspace)
+) -> InspectionState:
     """Return the current state of an inspection."""
-    record = await inspection_store.get(inspection_id)
+    record = await inspection_store.get(workspace_id, inspection_id)
     if record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Unknown inspection."
@@ -311,9 +360,11 @@ def _label_for(record: dict, result: EnrichedInspectionResult | None) -> str | N
     return inspection_prompt.referentiel_label(referentiel) if referentiel else None
 
 
-async def _load_result(inspection_id: str) -> tuple[dict, EnrichedInspectionResult | None]:
-    """Return an inspection record and its parsed result."""
-    record = await inspection_store.get(inspection_id)
+async def _load_result(
+    workspace_id: str, inspection_id: str
+) -> tuple[dict, EnrichedInspectionResult | None]:
+    """Return an inspection record and its parsed result, workspace-scoped."""
+    record = await inspection_store.get(workspace_id, inspection_id)
     if record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Unknown inspection."
@@ -341,10 +392,10 @@ def _require_finding(
 
 
 async def _set_validation(
-    inspection_id: str, index: int, validation_status: ValidationStatus
+    workspace_id: str, inspection_id: str, index: int, validation_status: ValidationStatus
 ) -> ReviewResponse:
-    """Record a human decision on one finding."""
-    record, result = await _load_result(inspection_id)
+    """Record a human decision on one finding: the act P1 requires."""
+    record, result = await _load_result(workspace_id, inspection_id)
     result = _require_finding(result, index)
 
     finding = result.findings[index]
@@ -356,7 +407,13 @@ async def _set_validation(
             finding.dispatch_status = DispatchStatus.NOT_QUEUED
             finding.dispatch_error = None
 
-    await inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
+    await inspection_store.update(
+        workspace_id, inspection_id, result=result.model_dump(mode="json")
+    )
+    await journal.record(
+        workspace_id, current_actor(), f"finding.{validation_status.value}",
+        inspection_id, index=index, rule_id=finding.rule_id,
+    )
     return ReviewResponse(
         inspection_id=inspection_id,
         status=record["status"],
@@ -370,9 +427,11 @@ async def _set_validation(
 
 
 @app.get("/inspections/{inspection_id}/review", response_model=ReviewResponse)
-async def review_inspection(inspection_id: str) -> ReviewResponse:
+async def review_inspection(
+    inspection_id: str, workspace_id: str = Depends(current_workspace)
+) -> ReviewResponse:
     """Return the enriched result and the counts the review screen needs."""
-    record, result = await _load_result(inspection_id)
+    record, result = await _load_result(workspace_id, inspection_id)
     return ReviewResponse(
         inspection_id=inspection_id,
         status=record["status"],
@@ -386,20 +445,30 @@ async def review_inspection(inspection_id: str) -> ReviewResponse:
 
 
 @app.post("/inspections/{inspection_id}/findings/{index}/approve", response_model=ReviewResponse)
-async def approve_finding(inspection_id: str, index: int) -> ReviewResponse:
+async def approve_finding(
+    inspection_id: str, index: int, workspace_id: str = Depends(current_workspace)
+) -> ReviewResponse:
     """Approve one finding."""
-    return await _set_validation(inspection_id, index, ValidationStatus.APPROVED)
+    return await _set_validation(
+        workspace_id, inspection_id, index, ValidationStatus.APPROVED
+    )
 
 
 @app.post("/inspections/{inspection_id}/findings/{index}/reject", response_model=ReviewResponse)
-async def reject_finding(inspection_id: str, index: int) -> ReviewResponse:
+async def reject_finding(
+    inspection_id: str, index: int, workspace_id: str = Depends(current_workspace)
+) -> ReviewResponse:
     """Reject one finding."""
-    return await _set_validation(inspection_id, index, ValidationStatus.REJECTED)
+    return await _set_validation(
+        workspace_id, inspection_id, index, ValidationStatus.REJECTED
+    )
 
 
 @app.post("/inspections/{inspection_id}/dispatch", response_model=DispatchResponse)
 async def dispatch_inspection(
-    inspection_id: str, options: DispatchRequest | None = None
+    inspection_id: str,
+    options: DispatchRequest | None = None,
+    workspace_id: str = Depends(current_workspace),
 ) -> DispatchResponse:
     """Notify the people accountable for the approved findings.
 
@@ -407,7 +476,7 @@ async def dispatch_inspection(
     findings pulled into their own message sent first. A finding already sent
     is never sent again, and one failed email never undoes a successful one.
     """
-    _, result = await _load_result(inspection_id)
+    _, result = await _load_result(workspace_id, inspection_id)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -427,11 +496,17 @@ async def dispatch_inspection(
     outcomes = await notification.dispatch(result, cc=(options.cc if options else []))
 
     # Persist whatever happened, successes and failures alike.
-    await inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
+    await inspection_store.update(
+        workspace_id, inspection_id, result=result.model_dump(mode="json")
+    )
 
     notified = {i for outcome in outcomes if outcome.status is DispatchStatus.SENT
                 for i in outcome.finding_indexes}
     sent_count = sum(1 for o in outcomes if o.status is DispatchStatus.SENT)
+    await journal.record(
+        workspace_id, current_actor(), "inspection.dispatched", inspection_id,
+        sent=sent_count, failed=len(outcomes) - sent_count,
+    )
 
     return DispatchResponse(
         inspection_id=inspection_id,
@@ -458,9 +533,11 @@ async def review_page(inspection_id: str) -> FileResponse:
 
 
 @app.get("/inspections/{inspection_id}/evidence/{filename}", include_in_schema=False)
-async def read_evidence(inspection_id: str, filename: str) -> Response:
+async def read_evidence(
+    inspection_id: str, filename: str, workspace_id: str = Depends(current_workspace)
+) -> Response:
     """Serve one retained evidence image."""
-    if await inspection_store.get(inspection_id) is None:
+    if await inspection_store.get(workspace_id, inspection_id) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Unknown inspection."
         )
@@ -482,14 +559,19 @@ async def read_evidence(inspection_id: str, filename: str) -> Response:
 
 
 @app.patch("/inspections/{inspection_id}/findings/{index}", response_model=ReviewResponse)
-async def edit_finding(inspection_id: str, index: int, edit: FindingEdit) -> ReviewResponse:
+async def edit_finding(
+    inspection_id: str,
+    index: int,
+    edit: FindingEdit,
+    workspace_id: str = Depends(current_workspace),
+) -> ReviewResponse:
     """Apply an auditor's correction to a finding.
 
     What the analysis originally reported is kept alongside the correction, so
     the change stays auditable, and everything derived from the edited values
     is recomputed.
     """
-    record, result = await _load_result(inspection_id)
+    record, result = await _load_result(workspace_id, inspection_id)
     result = _require_finding(result, index)
     finding = result.findings[index]
 
@@ -518,7 +600,13 @@ async def edit_finding(inspection_id: str, index: int, edit: FindingEdit) -> Rev
 
     assignment.recompute(finding, result.referentiel)
     result.findings = assignment.sort_findings(result.findings)
-    await inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
+    await inspection_store.update(
+        workspace_id, inspection_id, result=result.model_dump(mode="json")
+    )
+    await journal.record(
+        workspace_id, current_actor(), "finding.edited", inspection_id,
+        index=index, fields=sorted(changes),
+    )
 
     return ReviewResponse(
         inspection_id=inspection_id, status=record["status"],
@@ -535,9 +623,13 @@ async def edit_finding(inspection_id: str, index: int, edit: FindingEdit) -> Rev
     response_model=ReviewResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def add_finding(inspection_id: str, manual: ManualFinding) -> ReviewResponse:
+async def add_finding(
+    inspection_id: str,
+    manual: ManualFinding,
+    workspace_id: str = Depends(current_workspace),
+) -> ReviewResponse:
     """Add a finding the analysis missed."""
-    record, result = await _load_result(inspection_id)
+    record, result = await _load_result(workspace_id, inspection_id)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -549,7 +641,13 @@ async def add_finding(inspection_id: str, manual: ManualFinding) -> ReviewRespon
         result.referentiel, timestamp_sec=manual.timestamp_sec,
     )
     result.findings = assignment.sort_findings([*result.findings, finding])
-    await inspection_store.update(inspection_id, result=result.model_dump(mode="json"))
+    await inspection_store.update(
+        workspace_id, inspection_id, result=result.model_dump(mode="json")
+    )
+    await journal.record(
+        workspace_id, current_actor(), "finding.added", inspection_id,
+        rule_id=manual.rule_id,
+    )
 
     return ReviewResponse(
         inspection_id=inspection_id, status=record["status"],
@@ -562,9 +660,11 @@ async def add_finding(inspection_id: str, manual: ManualFinding) -> ReviewRespon
 
 
 @app.get("/inspections/{inspection_id}/report.pdf", include_in_schema=False)
-async def read_report(inspection_id: str) -> Response:
+async def read_report(
+    inspection_id: str, workspace_id: str = Depends(current_workspace)
+) -> Response:
     """Generate the inspection's PDF report."""
-    _, result = await _load_result(inspection_id)
+    _, result = await _load_result(workspace_id, inspection_id)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -632,7 +732,10 @@ async def landing_page() -> FileResponse:
     response_model=InspectionAccepted,
 )
 async def choose_referentiel(
-    inspection_id: str, choice: ReferentielChoice, background_tasks: BackgroundTasks
+    inspection_id: str,
+    choice: ReferentielChoice,
+    background_tasks: BackgroundTasks,
+    workspace_id: str = Depends(current_workspace),
 ) -> InspectionAccepted:
     """Audit an inspection against a rule set the auditor picked.
 
@@ -640,7 +743,7 @@ async def choose_referentiel(
     sector could not be determined. Once an audit has run the media is gone,
     and a different rule set means a new upload.
     """
-    record = await inspection_store.get(inspection_id)
+    record = await inspection_store.get(workspace_id, inspection_id)
     if record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Unknown inspection."
@@ -656,6 +759,7 @@ async def choose_referentiel(
         )
 
     await inspection_store.update(
+        workspace_id,
         inspection_id,
         status=InspectionStatus.PROCESSING,
         stage=InspectionStage.RECEPTION,
@@ -663,8 +767,12 @@ async def choose_referentiel(
         result=None,
         error=None,
     )
+    await journal.record(
+        workspace_id, current_actor(), "inspection.rerun", inspection_id,
+        referentiel=choice.referentiel.value,
+    )
     job_queue.get_queue(background_tasks).enqueue(
-        run_inspection, inspection_id, choice.referentiel.value
+        run_inspection, workspace_id, inspection_id, choice.referentiel.value
     )
     return InspectionAccepted(
         inspection_id=inspection_id, status=InspectionStatus.PROCESSING

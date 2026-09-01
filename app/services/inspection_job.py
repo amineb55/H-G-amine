@@ -22,7 +22,9 @@ UNDETERMINED_MESSAGE = (
 )
 
 
-async def _record_undetermined(inspection_id: str, detection: SectorDetection) -> None:
+async def _record_undetermined(
+    workspace_id: str, inspection_id: str, detection: SectorDetection
+) -> None:
     """Close an inspection whose sector could not be established.
 
     The media is kept so the auditor can choose a sector without uploading
@@ -38,6 +40,7 @@ async def _record_undetermined(inspection_id: str, detection: SectorDetection) -
         findings=[],
     )
     await inspection_store.update(
+        workspace_id,
         inspection_id,
         status=InspectionStatus.DONE,
         stage=InspectionStage.TERMINE,
@@ -53,7 +56,9 @@ async def _record_undetermined(inspection_id: str, detection: SectorDetection) -
     )
 
 
-async def run_inspection(inspection_id: str, referentiel: str | None = None) -> None:
+async def run_inspection(
+    workspace_id: str, inspection_id: str, referentiel: str | None = None
+) -> None:
     """Analyze the media held for an inspection and record the outcome.
 
     Without a rule set the sector is detected first. A sector that cannot
@@ -69,7 +74,9 @@ async def run_inspection(inspection_id: str, referentiel: str | None = None) -> 
 
     try:
         if not referentiel:
-            await inspection_store.update(inspection_id, stage=InspectionStage.DETECTION)
+            await inspection_store.update(
+                workspace_id, inspection_id, stage=InspectionStage.DETECTION
+            )
             found = await analysis_engine.detect_sector(media_path)
             threshold = get_settings().detection_min_confidence
             determined = bool(found["referentiel"]) and found["confidence"] >= threshold
@@ -80,21 +87,21 @@ async def run_inspection(inspection_id: str, referentiel: str | None = None) -> 
                 determined=determined,
             )
             if not determined:
-                await _record_undetermined(inspection_id, detection)
+                await _record_undetermined(workspace_id, inspection_id, detection)
                 return
             referentiel = detection.referentiel
             await inspection_store.update(
-                inspection_id, detection=detection.model_dump(mode="json")
+                workspace_id, inspection_id, detection=detection.model_dump(mode="json")
             )
 
         # From here an audit runs, so the media is spent whatever happens.
         audited = True
-        await inspection_store.update(inspection_id, stage=InspectionStage.ANALYSE)
+        await inspection_store.update(workspace_id, inspection_id, stage=InspectionStage.ANALYSE)
         raw = await analysis_engine.analyze(media_path, referentiel)
         result = InspectionResult.model_validate(
             {**raw, "inspection_id": inspection_id, "referentiel": referentiel}
         )
-        await inspection_store.update(inspection_id, stage=InspectionStage.ASSIGNATION)
+        await inspection_store.update(workspace_id, inspection_id, stage=InspectionStage.ASSIGNATION)
         enriched = assignment.enrich(result)
 
         try:
@@ -104,6 +111,7 @@ async def run_inspection(inspection_id: str, referentiel: str | None = None) -> 
             logger.exception("Could not build evidence for inspection %s", inspection_id)
 
         await inspection_store.update(
+            workspace_id,
             inspection_id,
             status=InspectionStatus.DONE,
             stage=InspectionStage.TERMINE,
@@ -116,6 +124,7 @@ async def run_inspection(inspection_id: str, referentiel: str | None = None) -> 
     except Exception as exc:  # noqa: BLE001 - the job must never propagate
         logger.exception("Analysis failed for inspection %s", inspection_id)
         await inspection_store.update(
+            workspace_id,
             inspection_id,
             status=InspectionStatus.FAILED,
             stage=InspectionStage.TERMINE,
@@ -129,7 +138,7 @@ async def run_inspection(inspection_id: str, referentiel: str | None = None) -> 
     finally:
         # One exit path: any inspection that reached an audit gives up its
         # media, success or failure. Only a sector left undetermined keeps it.
-        record = await inspection_store.get(inspection_id)
+        record = await inspection_store.get(workspace_id, inspection_id)
         keep = bool(record and record.get("media_retained")) and not audited
         if not keep:
             try:
